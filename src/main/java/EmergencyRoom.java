@@ -3,7 +3,9 @@ import lombok.Data;
 import java.util.Comparator;
 import java.util.PriorityQueue;
 
-
+/**
+ * Class that described the emergency room.
+ */
 @Data
 public class EmergencyRoom {
     private String name;
@@ -35,7 +37,7 @@ public class EmergencyRoom {
         return waitingPatients.poll();
     }
 
-    public boolean hasTreatmentRoom() {
+    public boolean hasTreatmentRoomAvailable() {
         return occupiedTreatmentRooms < treatmentRooms;
     }
 
@@ -45,7 +47,7 @@ public class EmergencyRoom {
         }
     }
 
-    public void releaseTreatmentRoom() {
+    public void freeTreatmentRoom() {
         if (occupiedTreatmentRooms > 0) {
             occupiedTreatmentRooms--;
         }
