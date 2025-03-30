@@ -51,7 +51,7 @@ public class Patient {
         /**
          * Creates a new triage level.
          * @param priority The priority level (lower = higher priority)
-         * @param description A human readable description of the triage level.
+         * @param description A human-readable description of the triage level.
          */
         TriageLevel(int priority, String description) {
             this.priority = priority;
