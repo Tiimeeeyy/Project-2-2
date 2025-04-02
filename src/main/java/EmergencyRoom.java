@@ -4,7 +4,7 @@ import java.util.Comparator;
 import java.util.PriorityQueue;
 
 /**
- * Class that described the emergency room.
+ * Class that described the emergency room. 
  * Manages patient waiting queue, treatment rooms and capacity constraints.
  */
 @Data
