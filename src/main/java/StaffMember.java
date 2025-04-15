@@ -96,4 +96,8 @@ public class StaffMember {
         FREE,
         DOUBLE,
     }
+
+    public Role getRole() {
+        return role;
+    }
 }

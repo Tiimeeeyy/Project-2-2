@@ -57,6 +57,45 @@ public class Patient {
             this.priority = priority;
             this.description = description;
         }
+
+        public int getPriority() {
+            return priority;
+        }
     }
 
+    public TriageLevel getTriageLevel() {
+        return triageLevel;
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public int getAge() {
+        return age;
+    }
+
+    public LocalDateTime getArrivalTime() {
+        return arrivalTime;
+    }
+
+    public LocalDateTime getTreatmentStartTime() {
+        return treatmentStartTime;
+    }
+
+    public LocalDateTime getDischargeTime() {
+        return dischargeTime;
+    }
+
+    public void setDischargeTime(LocalDateTime dischargeTime) {
+        this.dischargeTime = dischargeTime;
+    }
+
+    public void setTreatmentStartTime(LocalDateTime treatmentStartTime) {
+        this.treatmentStartTime = treatmentStartTime;
+    }
 }
