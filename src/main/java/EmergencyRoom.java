@@ -79,4 +79,23 @@ public class EmergencyRoom {
         }
     }
 
+    public String getName() {
+        return name;
+    }
+
+    public int getCapacity() {
+        return capacity;
+    }
+
+    public PriorityQueue<Patient> getWaitingPatients() {
+        return waitingPatients;
+    }
+
+    public int getTreatmentRooms() {
+        return treatmentRooms;
+    }
+
+    public int getOccupiedTreatmentRooms() {
+        return occupiedTreatmentRooms;
+    }
 }
