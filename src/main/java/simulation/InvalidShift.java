@@ -1,3 +1,5 @@
+package simulation;
+
 /**
  * Custom exception to be thrown, when a given shift cant be added to the staff users schedule.
  */
