@@ -1,0 +1,53 @@
+{
+  "populationSize": 150000,
+  "ERName": "MUMC",
+  "ERCapacity": 30,
+  "ERTreatmentRooms": 15,
+  "patientServices": [
+    {
+      "name": "ambulance",
+      "triageLevel": "RED",
+      "chance": 0.02,
+      "timeMin": 30,
+      "timeMax": 60
+    },
+    {
+      "name": "surgery",
+      "triageLevel": "RED",
+      "chance": 0.08,
+      "timeMin": 120,
+      "timeMax": 300
+    },
+    {
+      "name": "stitches",
+      "triageLevel": "YELLOW",
+      "chance": 0.2,
+      "timeMin": 60,
+      "timeMax": 90
+    },
+    {
+      "name": "painkillers",
+      "triageLevel": "GREEN",
+      "chance": 0.4,
+      "timeMin": 15,
+      "timeMax": 30
+    },
+    {
+      "name": "nothing",
+      "triageLevel": "BLUE",
+      "chance": 0.3,
+      "timeMin": 0.15,
+      "timeMax": 0.30
+    }
+  ],
+
+  "patientArrivalFunctions": {
+    "constant": "1",
+    "sinusoidal_24h": "-0.25*cos((pi/12)*t)+0.75"
+  },
+
+  "patientMinAge": 5,
+  "patientMaxAge": 99,
+
+  "visualize": true
+}

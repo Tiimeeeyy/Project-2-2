@@ -4,6 +4,7 @@ import lombok.extern.log4j.Log4j;
 import org.apache.commons.math3.distribution.ExponentialDistribution;
 import org.apache.commons.math3.distribution.PoissonDistribution;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -15,6 +16,7 @@ import java.util.logging.Logger;
  */
 @Log @Data
 public class PoissonSimulator {
+    private Config config;
     private final EmergencyRoom er;
     private final Random random = new Random();
     private final int populationSize;
@@ -22,6 +24,8 @@ public class PoissonSimulator {
     private final List<Patient> treatingPatients = new ArrayList<>();
     private final List<Patient> treatedPatients = new ArrayList<>();
     private int rejectedPatients = 0;
+    private int[][] data;
+    private int deltaHours;
 
     // !HYPERPARAMETER!
     private final double hourlyPatientRate;
@@ -41,11 +45,21 @@ public class PoissonSimulator {
      * Constructs a Simulator Object. The object can be used to run Poisson process simulations for a hospital in a city of a given size.
      * @param populationSize The Population size of the city the simulated hospital is in.
      */
-    public PoissonSimulator(int populationSize) {
+    public PoissonSimulator(int populationSize) throws IOException {
+        this.config = Config.getInstance();
         this.populationSize = populationSize;
         this.hourlyPatientRate = populationSize * 0.00008;
         this.er = new EmergencyRoom("MUMC", 30, 15);
         this.currentTime = LocalDateTime.now().withHour(8).withMinute(0).withSecond(0);
+        this.deltaHours = 0;
+    }
+    public PoissonSimulator() throws IOException {
+        this.config = Config.getInstance();
+        this.populationSize = config.getPopulationSize();
+        this.hourlyPatientRate = populationSize * 0.00008;
+        this.er = new EmergencyRoom(config.getERName(), config.getERCapacity(), config.getERTreatmentRooms());
+        this.currentTime = LocalDateTime.now().withHour(8).withMinute(0).withSecond(0);
+        this.deltaHours = 0;
     }
 
     /**
@@ -57,22 +71,26 @@ public class PoissonSimulator {
 
         log.log(Level.INFO, "Starting ER simulation @ {0}", currentTime);
         log.log(Level.INFO, "Expected Patients / hour: {0}", hourlyPatientRate);
-
+        data = new int[5][(int)simulationDuration.toHours()];
         while(currentTime.isBefore(endTime)) {
             processHour();
+            deltaHours++;
             currentTime = currentTime.plusHours(1);
         }
+        Chart chart = new Chart(data);
         printStatistics();
+        chart.display();
     }
 
     /**
      * Processes an hour step of the simulation. Handles patient arrivals and discharges in an hourly fashion.
      */
     private void processHour() {
-        PoissonDistribution poissonDistribution = new PoissonDistribution(hourlyPatientRate);
+        PoissonDistribution poissonDistribution = new PoissonDistribution(hourlyPatientRate); //TODO: scale by scenario expressions
         int newPatientCount = poissonDistribution.sample();
 
         int hour = currentTime.getHour();
+        data[0][deltaHours] = hour;
         boolean isWeekend = currentTime.getDayOfWeek().getValue() >= 6;
 
         if ((hour >= 17 && hour <= 22) || isWeekend) {
@@ -84,7 +102,7 @@ public class PoissonSimulator {
         }
 
         System.out.println("\n" + currentTime + " - New patients arriving: " + newPatientCount);
-
+        data[1][deltaHours] = newPatientCount;
         for (int i = 0; i < newPatientCount; i++) {
             Patient patient = generateRandomPatient();
 
@@ -100,7 +118,9 @@ public class PoissonSimulator {
         processTreatments();
 
         moveWaitingToTreatment();
-
+        data[2][deltaHours] = er.getWaitingPatients().size();
+        data[3][deltaHours] = treatingPatients.size();
+        data[4][deltaHours] = (er.getTreatmentRooms() - er.getOccupiedTreatmentRooms());
         System.out.println("Hour summary: Waiting=" + er.getWaitingPatients().size() +
                 ", In treatment=" + treatingPatients.size() +
                 ", Rooms available=" + (er.getTreatmentRooms() - er.getOccupiedTreatmentRooms()));
@@ -151,7 +171,7 @@ public class PoissonSimulator {
         String name = "Patient" + Math.abs(id.hashCode() % 10000);
         int age = 5 + random.nextInt(95); // Ages 5-99
 
-        Patient.TriageLevel triageLevel;
+        Patient.TriageLevel triageLevel; //TODO: update existing triage levels with PatientService objects
         int rand = random.nextInt(100);
         if (rand < 5) {
             triageLevel = Patient.TriageLevel.RED;
