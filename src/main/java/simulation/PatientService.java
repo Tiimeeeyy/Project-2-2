@@ -1,3 +1,5 @@
+package simulation;
+
 import lombok.Setter;
 import lombok.Getter;
 

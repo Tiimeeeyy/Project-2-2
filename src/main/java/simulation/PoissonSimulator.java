@@ -171,7 +171,7 @@ public class PoissonSimulator {
         String name = "simulation.Patient" + Math.abs(id.hashCode() % 10000);
         int age = 5 + random.nextInt(95); // Ages 5-99
 
-        Patient.TriageLevel triageLevel; //TODO: update existing triage levels with PatientService objects
+        Patient.TriageLevel triageLevel; //TODO: update existing triage levels with simulation.PatientService objects
         int rand = random.nextInt(100);
         if (rand < 5) {
             triageLevel = Patient.TriageLevel.RED;

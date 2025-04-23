@@ -1,3 +1,5 @@
+package simulation;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -8,7 +10,7 @@ import java.io.IOException;
 import java.util.Map;
 
 /**
- * This parses the config file into the Config instance to be read by the rest of the program.
+ * This parses the config file into the simulation.Config instance to be read by the rest of the program.
  *
  * IMPORTANT: To change the config, edit config.json! This is just its POJO representation. You can't put comments in a JSON
  * though, so put 'em here.
@@ -40,7 +42,7 @@ public final class Config {
         ObjectMapper mapper = new ObjectMapper();
         if(_instance==null) {
             //instead of instantiating with 'new', we use Jackson to instantiate from the json
-            _instance = mapper.readValue(Config.class.getResource("config.json"), Config.class);
+            _instance = mapper.readValue(Config.class.getResource("../config.json"), Config.class);
             //that way the config can build its own interpreter, so we don't need a new class
         }
         return _instance;
