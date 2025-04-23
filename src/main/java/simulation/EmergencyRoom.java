@@ -1,3 +1,5 @@
+package simulation;
+
 import lombok.Data;
 
 import java.util.Comparator;

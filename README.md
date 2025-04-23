@@ -5,8 +5,8 @@ This project simulates an Emergency Room (ER) in a Dutch city with approximately
 ## Overview
 
 The simulation models:
-- Patient arrivals following a Poisson distribution
-- Patient triage based on severity levels (RED, ORANGE, YELLOW, GREEN, BLUE)
+- simulation.Patient arrivals following a Poisson distribution
+- simulation.Patient triage based on severity levels (RED, ORANGE, YELLOW, GREEN, BLUE)
 - Treatment time distributions based on triage levels
 - Waiting room capacity constraints
 - Treatment room availability
@@ -14,21 +14,21 @@ The simulation models:
 
 ## Key Components
 
-### Patient
+### simulation.Patient
 Represents individuals seeking emergency care with attributes like:
 - Unique identifier
 - Name and age
 - Triage level
 - Arrival, treatment start, and discharge timestamps
 
-### EmergencyRoom
+### simulation.EmergencyRoom
 Models the ER facility with:
 - Waiting room capacity
 - Priority queue for patient triage
 - Treatment room management
-- Patient flow controls
+- simulation.Patient flow controls
 
-### PoissonSimulator
+### simulation.PoissonSimulator
 The main simulation engine that:
 - Generates patients according to statistical models
 - Processes arrivals, treatments, and discharges

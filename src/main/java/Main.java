@@ -1,3 +1,5 @@
+import simulation.PoissonSimulator;
+
 import java.time.Duration;
 
 public class Main {

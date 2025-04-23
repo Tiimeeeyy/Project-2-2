@@ -1,6 +1,7 @@
+package simulation;
+
 import lombok.Data;
 import lombok.extern.java.Log;
-import lombok.extern.log4j.Log4j;
 import org.apache.commons.math3.distribution.ExponentialDistribution;
 import org.apache.commons.math3.distribution.PoissonDistribution;
 
@@ -8,7 +9,6 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Poisson simulation for simulating patients arriving / getting treated / getting discharged / waiting etc.
@@ -91,9 +91,9 @@ public class PoissonSimulator {
             boolean admitted = er.addPatient(patient);
             if (!admitted) {
                 rejectedPatients++;
-                //System.out.println("Patient " + patient.getName() + " (Triage: " + patient.getTriageLevel() + ") rejected - ER is full");
+                //System.out.println("simulation.Patient " + patient.getName() + " (Triage: " + patient.getTriageLevel() + ") rejected - ER is full");
             } else {
-                //System.out.println("Patient " + patient.getName() + "(Triage: " + patient.getTriageLevel() + ") arrived in ER");
+                //System.out.println("simulation.Patient " + patient.getName() + "(Triage: " + patient.getTriageLevel() + ") arrived in ER");
             }
         }
 
@@ -123,7 +123,7 @@ public class PoissonSimulator {
                 iterator.remove();
                 er.freeTreatmentRoom();
 
-                //System.out.println("Patient " + patient.getName() + " (Triage: " + patient.getTriageLevel() + ") discharged");
+                //System.out.println("simulation.Patient " + patient.getName() + " (Triage: " + patient.getTriageLevel() + ") discharged");
             }
         }
     }
@@ -138,17 +138,17 @@ public class PoissonSimulator {
             treatingPatients.add(patient);
             er.occupyTreatmentRoom();
 
-            //System.out.println("Patient " + patient.getName() + " (Triage: " + patient.getTriageLevel() + ") moved to treatment");
+            //System.out.println("simulation.Patient " + patient.getName() + " (Triage: " + patient.getTriageLevel() + ") moved to treatment");
         }
     }
 
     /**
-     * Generates a random Patient Object.
+     * Generates a random simulation.Patient Object.
      * @return The randomly generated patient.
      */
     private Patient generateRandomPatient() {
         UUID id = UUID.randomUUID();
-        String name = "Patient" + Math.abs(id.hashCode() % 10000);
+        String name = "simulation.Patient" + Math.abs(id.hashCode() % 10000);
         int age = 5 + random.nextInt(95); // Ages 5-99
 
         Patient.TriageLevel triageLevel;

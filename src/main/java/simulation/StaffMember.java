@@ -1,3 +1,5 @@
+package simulation;
+
 import lombok.Data;
 
 import java.time.DayOfWeek;
@@ -38,7 +40,7 @@ public class StaffMember {
     public StaffMember createStaffMember(Role role) {
         UUID id = UUID.randomUUID();
         HashMap<DayOfWeek, Shift> schedule = new HashMap<>(7);
-        String name = "StaffMember" + Math.abs(id.hashCode() % 10000);
+        String name = "simulation.StaffMember" + Math.abs(id.hashCode() % 10000);
         return new StaffMember(id, name, schedule, role);
     }
 
@@ -88,13 +90,16 @@ public class StaffMember {
     /**
      * Defines the types of shifts that exist in the Simulation.
      * A shift is assumed to be 7-8 hours (36-40 hr work week) long, and a double shift
-     * is defined as the maximum shift length in NL, 12 hours.
+     * is defined as the maximum shift length in NL, 12 hours. Break is considered and added in the comments.
      */
     public enum Shift {
-        DAY,
-        NIGHT,
-        FREE,
-        DOUBLE,
+        DAY, // 8 Hours from 07:00 - 15:30 (30-min break incl)
+        EVENING, // 8 Hours from 15:30 until 00:00 (30-min break incl)
+        NIGHT, // 7 Hours from 00:00 until 7:00 (30-min break included)
+        FREE, // No work on the day
+        DOUBLE_EARLY, // 12-hour shift, 07:00 - 19:00 (45-min break incl)
+        DOUBLE_LATE, // 12-hour shift, 12:00 - 00:00 (45-min break incl)
+        ON_CALL,
     }
 
     public Role getRole() {

@@ -2,6 +2,8 @@ import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.collections4.map.MultiKeyMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import scheduling.Util;
+import simulation.StaffMember;
 
 import java.time.DayOfWeek;
 import java.util.*;
@@ -25,14 +27,14 @@ class UtilTest {
         // Create schedules
         HashMap<DayOfWeek, StaffMember.Shift> schedule1 = new HashMap<>();
         schedule1.put(DayOfWeek.MONDAY, StaffMember.Shift.DAY);
-        schedule1.put(DayOfWeek.TUESDAY, StaffMember.Shift.NIGHT);
+        schedule1.put(DayOfWeek.TUESDAY, StaffMember.Shift.EVENING);
 
         HashMap<DayOfWeek, StaffMember.Shift> schedule2 = new HashMap<>();
         schedule2.put(DayOfWeek.MONDAY, StaffMember.Shift.DAY);
         schedule2.put(DayOfWeek.WEDNESDAY, StaffMember.Shift.DAY);
 
         HashMap<DayOfWeek, StaffMember.Shift> schedule3 = new HashMap<>();
-        schedule3.put(DayOfWeek.MONDAY, StaffMember.Shift.NIGHT);
+        schedule3.put(DayOfWeek.MONDAY, StaffMember.Shift.EVENING);
 
         // Create staff members with different roles
         StaffMember doctor = new StaffMember(id1, "Dr. Smith", schedule1, StaffMember.Role.DOCTOR);
@@ -92,14 +94,14 @@ class UtilTest {
         );
         assertEquals(1, doctorCount);
 
-        // Test staff levels for MONDAY NIGHT shift with ADMIN role
+        // Test staff levels for MONDAY EVENING shift with ADMIN role
         MultiKeyMap<Object, Integer> mondayNightAdmin = util.getStaffLevels(
-            staffByRole, DayOfWeek.MONDAY, StaffMember.Shift.NIGHT, StaffMember.Role.ADMINISTRATIVE
+            staffByRole, DayOfWeek.MONDAY, StaffMember.Shift.EVENING, StaffMember.Role.ADMINISTRATIVE
         );
 
         // Check that the count is correct
         Integer adminCount = mondayNightAdmin.get(
-            StaffMember.Role.ADMINISTRATIVE, DayOfWeek.MONDAY, StaffMember.Shift.NIGHT
+            StaffMember.Role.ADMINISTRATIVE, DayOfWeek.MONDAY, StaffMember.Shift.EVENING
         );
         assertEquals(1, adminCount);
 

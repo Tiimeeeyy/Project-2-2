@@ -1,3 +1,5 @@
+package simulation;
+
 import lombok.Data;
 import lombok.Getter;
 
@@ -6,7 +8,7 @@ import java.util.UUID;
 
 /**
  * Represents a patient attending the Emergency room.
- * Contains the most important patient information, like triage level, a name and timestamps of entry, tretment and discharge.
+ * Contains the most important patient information, like triage level, a name and timestamps of entry, treatment and discharge.
  */
 @Data
 public class Patient {
@@ -19,12 +21,12 @@ public class Patient {
     private LocalDateTime dischargeTime;
 
     /**
-     * Constructs a new Patient object with the given attributes
+     * Constructs a new simulation.Patient object with the given attributes
      * @param id The patients assigned ID
-     * @param name The name of the Patient
-     * @param age The age of the Patient
+     * @param name The name of the simulation.Patient
+     * @param age The age of the simulation.Patient
      * @param triageLevel The patients triage level
-     * @param arrivalTime The arrival time of the Patient
+     * @param arrivalTime The arrival time of the simulation.Patient
      */
     public Patient(UUID id, String name, int age, TriageLevel triageLevel, LocalDateTime arrivalTime) {
         this.id = id;
