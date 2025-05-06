@@ -34,6 +34,7 @@ public final class Config {
     @JsonProperty("ERTreatmentRooms")
     private int ERTreatmentRooms;
     private int patientMaxAge;
+    private String defaultArrivalFunction;
     private PatientService[] patientServices;
     private Map<String,String> patientArrivalFunctions;
     private boolean visualize;

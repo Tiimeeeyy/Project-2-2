@@ -43,9 +43,10 @@
 
   "patientArrivalFunctions": {
     "constant": "1",
-    "sinusoidal_24h": "-0.25*cos((pi/12)*t)+0.75"
+    "linear": "t",
+    "sinusoidal_24h": "(-0.25)*cos((pi/12)*t)+0.75"
   },
-
+  "defaultArrivalFunction": "sinusoidal_24h",
   "patientMinAge": 5,
   "patientMaxAge": 99,
 

@@ -4,6 +4,8 @@ import lombok.Data;
 import lombok.extern.java.Log;
 import org.apache.commons.math3.distribution.ExponentialDistribution;
 import org.apache.commons.math3.distribution.PoissonDistribution;
+import org.mariuszgromada.math.mxparser.Argument;
+import org.mariuszgromada.math.mxparser.Expression;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -23,9 +25,13 @@ public class PoissonSimulator {
     private LocalDateTime currentTime;
     private final List<Patient> treatingPatients = new ArrayList<>();
     private final List<Patient> treatedPatients = new ArrayList<>();
+    private final double epsilon = 0.001;
     private int rejectedPatients = 0;
     private int[][] data;
     private int deltaHours;
+    private Expression e;
+    private Argument t;
+    private boolean useConfig=false;
 
     // !HYPERPARAMETER!
     private final double hourlyPatientRate;
@@ -52,6 +58,9 @@ public class PoissonSimulator {
         this.er = new EmergencyRoom("MUMC", 30, 15);
         this.currentTime = LocalDateTime.now().withHour(8).withMinute(0).withSecond(0);
         this.deltaHours = 0;
+        this.useConfig = true;
+        this.t = new Argument("t=0");
+        this.e = new Expression("1",t);
     }
     public PoissonSimulator() throws IOException {
         this.config = Config.getInstance();
@@ -60,6 +69,9 @@ public class PoissonSimulator {
         this.er = new EmergencyRoom(config.getERName(), config.getERCapacity(), config.getERTreatmentRooms());
         this.currentTime = LocalDateTime.now().withHour(8).withMinute(0).withSecond(0);
         this.deltaHours = 0;
+        this.t = new Argument("t=0");
+        this.e = new Expression(config.getPatientArrivalFunctions().get(config.getDefaultArrivalFunction()),t);
+        System.out.println("Initalized with expression '"+config.getDefaultArrivalFunction()+"': f(t) = "+e.getExpressionString());
     }
 
     /**
@@ -86,19 +98,24 @@ public class PoissonSimulator {
      * Processes an hour step of the simulation. Handles patient arrivals and discharges in an hourly fashion.
      */
     private void processHour() {
-        PoissonDistribution poissonDistribution = new PoissonDistribution(hourlyPatientRate); //TODO: scale by scenario expressions
+        t.setArgumentValue(deltaHours);
+        double scale = e.calculate();
+        if(scale<=0){scale=epsilon;}//floor of epsilon to avoid a distribution where lambda<=0
+        System.out.println("Scale: "+Double.toString(scale));
+        PoissonDistribution poissonDistribution = new PoissonDistribution(hourlyPatientRate*scale);
         int newPatientCount = poissonDistribution.sample();
 
         int hour = currentTime.getHour();
         data[0][deltaHours] = hour;
         boolean isWeekend = currentTime.getDayOfWeek().getValue() >= 6;
-
-        if ((hour >= 17 && hour <= 22) || isWeekend) {
-            // More patients during evening times and weekends
-            newPatientCount = (int) (newPatientCount * 1.2);
-        } else if (hour >= 23 || hour <= 5) {
-            // Fewer patients after 11 PM
-            newPatientCount = (int) (newPatientCount * 0.6);
+        if(!useConfig) {
+            if ((hour >= 17 && hour <= 22) || isWeekend) {
+                // More patients during evening times and weekends
+                newPatientCount = (int) (newPatientCount * 1.2);
+            } else if (hour >= 23 || hour <= 5) {
+                // Fewer patients after 11 PM
+                newPatientCount = (int) (newPatientCount * 0.6);
+            }
         }
 
         System.out.println("\n" + currentTime + " - New patients arriving: " + newPatientCount);
