@@ -45,6 +45,10 @@ The main simulation engine that:
 ```bash
 mvn clean compile exec:java -Dexec.mainClass="Main"
 ```
+or
+```bash
+mvn clean compile exec:java '-Dexec.mainClass=Main'
+```
 
 ## Simulation Parameters
 
