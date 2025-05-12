@@ -130,7 +130,14 @@ input[type="number"] {
     color: #2a4d69;
 }
 
-canvas {
-    width: 100% !important;
-    height: 300px !important;
+
+.chart-wrapper {
+    position: relative;
+    margin: auto;
+    height: 300px;
+}
+
+#triageChart {
+    max-width: 400px;
+    margin: 0 auto;
 }

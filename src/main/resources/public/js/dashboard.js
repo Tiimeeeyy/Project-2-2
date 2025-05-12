@@ -80,6 +80,10 @@ function initializeCharts() {
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+                duration: 500
+            },
             plugins: {
                 title: { display: true, text: 'Patient Flow Over Time' }
             },
@@ -109,6 +113,11 @@ function initializeCharts() {
         },
         options: {
             responsive: true,
+            maintainAspectRatio: true,
+            aspectRatio: 1,
+            animation: {
+                duration: 500
+            },
             plugins: {
                 title: { display: true, text: 'Triage Level Distribution' },
                 legend: { position: 'right' }
@@ -130,8 +139,15 @@ function initializeCharts() {
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+                duration: 500
+            },
             scales: {
-                y: { beginAtZero: true, title: { display: true, text: 'Number of Rooms' } }
+                y: { 
+                    beginAtZero: true, 
+                    title: { display: true, text: 'Number of Rooms' }
+                }
             },
             plugins: {
                 title: { display: true, text: 'Treatment Room Availability' }
@@ -150,7 +166,7 @@ function updateCharts(chartData, triageData) {
     patientFlowChart.data.datasets[0].data = chartData.arrivals;
     patientFlowChart.data.datasets[1].data = chartData.waiting;
     patientFlowChart.data.datasets[2].data = chartData.treating;
-    patientFlowChart.update();
+    patientFlowChart.update('none');
     
     // Update triage chart
     const triageCounts = triageData.triageCounts;
@@ -161,12 +177,12 @@ function updateCharts(chartData, triageData) {
         triageCounts.GREEN || 0,
         triageCounts.BLUE || 0
     ];
-    triageChart.update();
+    triageChart.update('none');
     
     // Update utilization chart - calculate average open rooms
     const avgOpenRooms = chartData.openRooms.reduce((a, b) => a + b, 0) / chartData.openRooms.length;
     utilizationChart.data.datasets[0].data = [avgOpenRooms];
-    utilizationChart.update();
+    utilizationChart.update('none');
 }
 
 function updateStatistics(data) {
