@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ER Simulation Dashboard</title>
+    <link rel="stylesheet" href="css/styles.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <header>
+            <h1>ER Simulation Dashboard</h1>
+            <div class="controls">
+                <label for="days">Simulation Days:</label>
+                <input type="number" id="days" value="7" min="1" max="30">
+                <button id="runSimulation">Run Simulation</button>
+                <div class="status" id="status">Ready</div>
+            </div>
+        </header>
+        
+        <div class="dashboard-grid">
+            <div class="chart-container">
+                <h2>Patient Flow Over Time</h2>
+                <div class="chart-wrapper">
+                    <canvas id="patientFlowChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <h2>Triage Level Distribution</h2>
+                <div class="chart-wrapper">
+                    <canvas id="triageChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="stats-container">
+                <h2>Simulation Statistics</h2>
+                <div id="statisticsArea">
+                    <p>Run a simulation to see statistics</p>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <h2>Resource Utilization</h2>
+                <div class="chart-wrapper">
+                    <canvas id="utilizationChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="js/dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ER Simulation - Simple Test</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>ER Simulation API Test</h1>
+        
+        <div>
+            <label for="days">Simulation Days:</label>
+            <input type="number" id="days" value="7" min="1" max="30">
+            <button onclick="runSimulation()">Run Simulation</button>
+        </div>
+        
+        <div>
+            <h2>Result:</h2>
+            <pre id="result">Results will appear here...</pre>
+        </div>
+        
+        <div>
+            <a href="index.html">Back to Home</a>
+        </div>
+    </div>
+
+    <script>
+        async function runSimulation() {
+            const days = document.getElementById('days').value;
+            const resultElement = document.getElementById('result');
+            
+            resultElement.textContent = 'Running simulation...';
+            
+            try {
+                const response = await fetch('/api/simulation/run', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ days: parseInt(days) })
+                });
+                
+                const data = await response.json();
+                resultElement.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultElement.textContent = 'Error: ' + error.message;
+            }
+        }
+        
+        // Test API connection on page load
+        async function testConnection() {
+            const resultElement = document.getElementById('result');
+            
+            try {
+                const response = await fetch('/api/hello');
+                const data = await response.json();
+                resultElement.textContent = 'Connection successful: ' + JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultElement.textContent = 'Connection error: ' + error.message;
+            }
+        }
+        
+        // Run test on page load
+        window.onload = testConnection;
+    </script>
+</body>
+</html>
