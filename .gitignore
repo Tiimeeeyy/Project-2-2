@@ -37,3 +37,10 @@ build/
 ### Mac OS ###
 .DS_Store
 /.idea/
+
+# Python virtual environment
+venv/
+.env/
+env/
+.venv/
+python_env/
