@@ -34,9 +34,10 @@ public final class Config {
     @JsonProperty("ERTreatmentRooms")
     private int ERTreatmentRooms;
     private int patientMaxAge;
-    private String defaultArrivalFunction;
+    private String defaultArrivalFunction; // default: sinusoidal_24h -> gives a daily average of arrivals for a given month (adjusted for seasonal changes)
     private PatientService[] patientServices;
     private Map<String,String> patientArrivalFunctions;
+    
     private boolean visualize;
     private Config() {}
     public static Config getInstance() throws IOException {
