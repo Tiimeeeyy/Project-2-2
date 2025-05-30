@@ -57,7 +57,7 @@ public class WebServer {
         
         // Run simulation
         Spark.post("/api/simulation/run", (request, response) -> {
-            Map<String, Object> body = gson.fromJson(request.body(), Map.class);
+            Map<String, Object> body = gson.fromJson(request.body(), new com.google.gson.reflect.TypeToken<Map<String, Object>>(){}.getType());
             
             int days = 7;
             if (body != null && body.containsKey("days")) {

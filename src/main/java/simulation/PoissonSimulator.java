@@ -8,6 +8,7 @@ import org.apache.commons.math3.distribution.ExponentialDistribution;
 import org.apache.commons.math3.distribution.PoissonDistribution;
 import org.mariuszgromada.math.mxparser.Argument;
 import org.mariuszgromada.math.mxparser.Expression;
+import org.mariuszgromada.math.mxparser.License;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -35,9 +36,6 @@ public class PoissonSimulator {
     private Argument t;
     private boolean useConfig=false;
 
-    // !HYPERPARAMETER!
-    private final double hourlyPatientRate;
-
     /**
      * Treatment times!
      */
@@ -56,7 +54,6 @@ public class PoissonSimulator {
     public PoissonSimulator(int populationSize) throws IOException {
         this.config = Config.getInstance();
         this.populationSize = populationSize;
-        this.hourlyPatientRate = populationSize * 0.00008;
         this.er = new EmergencyRoom("MUMC", 30, 15);
         this.currentTime = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
         this.deltaHours = 0;
@@ -67,13 +64,14 @@ public class PoissonSimulator {
     public PoissonSimulator() throws IOException {
         this.config = Config.getInstance();
         this.populationSize = config.getPopulationSize();
-        this.hourlyPatientRate = populationSize * 0.00008;
         this.er = new EmergencyRoom(config.getERName(), config.getERCapacity(), config.getERTreatmentRooms());
         this.currentTime = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
         this.deltaHours = 0;
+
+        License.iConfirmNonCommercialUse("KEN12");
         this.t = new Argument("t=0");
         this.e = new Expression(config.getPatientArrivalFunctions().get(config.getDefaultArrivalFunction()),t);
-        System.out.println("Initalized with expression '"+config.getDefaultArrivalFunction()+"': f(t) = "+e.getExpressionString());
+        System.out.println("Initialized with expression '"+config.getDefaultArrivalFunction()+"': f(t) = "+e.getExpressionString());
     }
 
     /**
@@ -84,16 +82,13 @@ public class PoissonSimulator {
         LocalDateTime endTime = currentTime.plus(simulationDuration);
 
         log.log(Level.INFO, "Starting ER simulation @ {0}", currentTime);
-        log.log(Level.INFO, "Expected Patients / hour: {0}", hourlyPatientRate);
         data = new int[5][(int)simulationDuration.toHours()];
         while(currentTime.isBefore(endTime)) {
             processHour();
             deltaHours++;
             currentTime = currentTime.plusHours(1);
         }
-        Chart chart = new Chart(data);
         printStatistics();
-        chart.display();
     }
 
     /**
