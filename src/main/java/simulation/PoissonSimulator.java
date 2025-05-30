@@ -2,6 +2,8 @@ package simulation;
 
 import lombok.Data;
 import lombok.extern.java.Log;
+import simulation.triage_classifiers.*;
+
 import org.apache.commons.math3.distribution.ExponentialDistribution;
 import org.apache.commons.math3.distribution.PoissonDistribution;
 import org.mariuszgromada.math.mxparser.Argument;
@@ -43,8 +45,8 @@ public class PoissonSimulator {
             Patient.TriageLevel.RED, 120.0,
             Patient.TriageLevel.ORANGE, 90.0,
             Patient.TriageLevel.YELLOW, 60.0,
-            Patient.TriageLevel.GREEN, 45.0,
-            Patient.TriageLevel.BLUE, 30.0
+            Patient.TriageLevel.GREEN, 30.0,
+            Patient.TriageLevel.BLUE, 10.0
     );
 
     /**
@@ -56,7 +58,7 @@ public class PoissonSimulator {
         this.populationSize = populationSize;
         this.hourlyPatientRate = populationSize * 0.00008;
         this.er = new EmergencyRoom("MUMC", 30, 15);
-        this.currentTime = LocalDateTime.now().withHour(8).withMinute(0).withSecond(0);
+        this.currentTime = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
         this.deltaHours = 0;
         this.useConfig = true;
         this.t = new Argument("t=0");
@@ -67,7 +69,7 @@ public class PoissonSimulator {
         this.populationSize = config.getPopulationSize();
         this.hourlyPatientRate = populationSize * 0.00008;
         this.er = new EmergencyRoom(config.getERName(), config.getERCapacity(), config.getERTreatmentRooms());
-        this.currentTime = LocalDateTime.now().withHour(8).withMinute(0).withSecond(0);
+        this.currentTime = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
         this.deltaHours = 0;
         this.t = new Argument("t=0");
         this.e = new Expression(config.getPatientArrivalFunctions().get(config.getDefaultArrivalFunction()),t);
@@ -98,25 +100,8 @@ public class PoissonSimulator {
      * Processes an hour step of the simulation. Handles patient arrivals and discharges in an hourly fashion.
      */
     private void processHour() {
-        t.setArgumentValue(deltaHours);
-        double scale = e.calculate();
-        if(scale<=0){scale=epsilon;}//floor of epsilon to avoid a distribution where lambda<=0
-        System.out.println("Scale: "+Double.toString(scale));
-        PoissonDistribution poissonDistribution = new PoissonDistribution(hourlyPatientRate*scale);
-        int newPatientCount = poissonDistribution.sample();
-
-        int hour = currentTime.getHour();
-        data[0][deltaHours] = hour;
-        boolean isWeekend = currentTime.getDayOfWeek().getValue() >= 6;
-        if(!useConfig) {
-            if ((hour >= 17 && hour <= 22) || isWeekend) {
-                // More patients during evening times and weekends
-                newPatientCount = (int) (newPatientCount * 1.2);
-            } else if (hour >= 23 || hour <= 5) {
-                // Fewer patients after 11 PM
-                newPatientCount = (int) (newPatientCount * 0.6);
-            }
-        }
+        
+        int newPatientCount = generatePatientArrivals();
 
         System.out.println("\n" + currentTime + " - New patients arriving: " + newPatientCount);
         data[1][deltaHours] = newPatientCount;
@@ -179,6 +164,59 @@ public class PoissonSimulator {
         }
     }
 
+    private int generatePatientArrivals(){
+        double[] weekdayFactors = {0.8647, 1.1324, 1.0294, 1.0294, 1.0294, 1.0088, 0.9059};
+        double[] hourFactors = {
+            0.5236, 0.48, 0.4364, 0.3927, 0.3927, 0.3927, 0.3927, 0.5236, 0.96, 1.5273, 1.7455, 1.6582, 
+            1.44, 1.3091, 1.6582, 1.3964, 1.1782, 1.1782, 1.1782, 1.1782, 1.1782, 1.1782, 0.96, 0.7418
+        };
+
+        int hour = currentTime.getHour();
+        int day_of_the_week = currentTime.getDayOfWeek().getValue();
+        int month = currentTime.getMonthValue();
+
+
+        t.setArgumentValue(month);
+        // provides average daily arrivals for a given month
+        double average_daily_arrival_rate = e.calculate();
+        // adjust for fluctuations based on day of the week
+        double weekday_arrival_rate = average_daily_arrival_rate * weekdayFactors[day_of_the_week - 1];
+        // convert to hourly arrivals and adjust for hour of the day
+        double hourly_arrival_rate = (weekday_arrival_rate / 24) * hourFactors[hour];
+
+        PoissonDistribution poissonDistribution = new PoissonDistribution(hourly_arrival_rate);
+        return poissonDistribution.sample();
+    }
+
+    private int generateDiagnosis(){
+        // String[] diagnosisCodes = {
+        //     "SYM001", "SYM002", "SYM003", "SYM004", "SYM005", "SYM006",
+        //     "SYM007", "SYM008", "SYM009", "SYM010", "SYM011", "SYM012",
+        //     "SYM013", "SYM014", "SYM015", "SYM016", "SYM017"
+        // };
+        double[] diagnosisProbs = {
+            3.72908417e-02, 3.45021445e-02, 6.44438692e-04, 1.42655116e-01,
+            4.82845207e-03, 2.06028792e-01, 4.42272662e-02, 1.19613046e-02,
+            6.28956682e-06, 9.97375315e-02, 2.83615920e-02, 7.33431225e-02,
+            1.14778789e-01, 4.28604950e-02, 4.97795023e-02, 4.95869448e-02,
+            5.94073777e-02
+        };
+
+        // Sample a diagnosis code based on the given probabilities
+        double r = random.nextDouble();
+        double cumulative = 0.0;
+        int diagnosisIndex = 0;
+        for (int i = 0; i < diagnosisProbs.length; i++) {
+            cumulative += diagnosisProbs[i];
+            if (r < cumulative) {
+            diagnosisIndex = i;
+            break;
+            }
+        }
+        return diagnosisIndex+1;
+
+    }
+
     /**
      * Generates a random simulation.Patient Object.
      * @return The randomly generated patient.
@@ -188,18 +226,31 @@ public class PoissonSimulator {
         String name = "simulation.Patient" + Math.abs(id.hashCode() % 10000);
         int age = 5 + random.nextInt(95); // Ages 5-99
 
-        Patient.TriageLevel triageLevel; //TODO: update existing triage levels with simulation.PatientService objects
-        int rand = random.nextInt(100);
-        if (rand < 5) {
-            triageLevel = Patient.TriageLevel.RED;
-        } else if (rand < 15) {
-            triageLevel = Patient.TriageLevel.ORANGE;
-        } else if (rand < 35) {
-            triageLevel = Patient.TriageLevel.YELLOW;
-        } else if (rand < 75) {
-            triageLevel = Patient.TriageLevel.GREEN;
-        } else {
-            triageLevel = Patient.TriageLevel.BLUE;
+        
+        int diagnosis = generateDiagnosis();
+
+
+        Patient.TriageLevel triageLevel = new MTS().classify(diagnosis);
+
+        // random change (10% to upgrade triage level)
+        if (random.nextDouble() < 0.05) {
+            switch (triageLevel) {
+                case BLUE:
+                    triageLevel = Patient.TriageLevel.GREEN;
+                    break;
+                case GREEN:
+                    triageLevel = Patient.TriageLevel.YELLOW;
+                    break;
+                case YELLOW:
+                    triageLevel = Patient.TriageLevel.ORANGE;
+                    break;
+                case ORANGE:
+                    triageLevel = Patient.TriageLevel.RED;
+                    break;
+                default:
+                    // RED is already the highest, do nothing
+                    break;
+            }
         }
 
         return new Patient(id, name, age, triageLevel, currentTime);
