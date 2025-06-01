@@ -1,16 +1,17 @@
 package simulation;
 
-import lombok.Data;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * Represents a patient attending the Emergency room.
- * Contains the most important patient information, like triage level, a name and timestamps of entry, treatment and discharge.
+ * Represents a patient in the emergency room, including identifying information,
+ * triage level, and timestamps for arrival, treatment start, and discharge.
  */
-@Data
+@Getter
+@Setter
 public class Patient {
     private final UUID id;
     private String name;
@@ -21,12 +22,13 @@ public class Patient {
     private LocalDateTime dischargeTime;
 
     /**
-     * Constructs a new simulation.Patient object with the given attributes
-     * @param id The patients assigned ID
-     * @param name The name of the simulation.Patient
-     * @param age The age of the simulation.Patient
-     * @param triageLevel The patients triage level
-     * @param arrivalTime The arrival time of the simulation.Patient
+     * Constructs a new Patient with the given attributes.
+     *
+     * @param id             Unique identifier for the patient.
+     * @param name           Name of the patient.
+     * @param age            Age of the patient.
+     * @param triageLevel    Assigned triage level.
+     * @param arrivalTime    Timestamp of patient arrival.
      */
     public Patient(UUID id, String name, int age, TriageLevel triageLevel, LocalDateTime arrivalTime) {
         this.id = id;
@@ -37,7 +39,8 @@ public class Patient {
     }
 
     /**
-     * Enumerates the patients triage level, with priority and description
+     * Enumerates patient triage levels, each with a priority and description.
+     * Lower numeric priority indicates higher urgency.
      */
     @Getter
     public enum TriageLevel {
@@ -51,53 +54,14 @@ public class Patient {
         private final String description;
 
         /**
-         * Creates a new triage level.
-         * @param priority The priority level (lower = higher priority)
-         * @param description A human-readable description of the triage level.
+         * Constructs a new TriageLevel.
+         *
+         * @param priority    Numeric priority (lower = higher urgency).
+         * @param description Human-readable description of the level.
          */
         TriageLevel(int priority, String description) {
             this.priority = priority;
             this.description = description;
         }
-
-        public int getPriority() {
-            return priority;
-        }
-    }
-
-    public TriageLevel getTriageLevel() {
-        return triageLevel;
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public int getAge() {
-        return age;
-    }
-
-    public LocalDateTime getArrivalTime() {
-        return arrivalTime;
-    }
-
-    public LocalDateTime getTreatmentStartTime() {
-        return treatmentStartTime;
-    }
-
-    public LocalDateTime getDischargeTime() {
-        return dischargeTime;
-    }
-
-    public void setDischargeTime(LocalDateTime dischargeTime) {
-        this.dischargeTime = dischargeTime;
-    }
-
-    public void setTreatmentStartTime(LocalDateTime treatmentStartTime) {
-        this.treatmentStartTime = treatmentStartTime;
     }
 }

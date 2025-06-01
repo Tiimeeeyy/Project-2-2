@@ -10,17 +10,17 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * Utility class to transform the basic instance of a staff list into multiple different Data structures,
- * to ensure computational efficiency when running optimization algorithms.
+ * Utility class providing methods to transform staff lists into efficient data structures
+ * for scheduling and optimization tasks.
  */
 public class Util {
 
     /**
-     * Transforms a List object if staff members into a Multivalued HashMap. This transformation ensures fast lookups of
-     * groups of Staff members which have the same role, which can be done by utilizing the role.
+     * Groups staff members by their role into a {@link MultiValuedMap}.
+     * This allows fast lookup of all staff sharing the same role.
      *
-     * @param staffList The staff list object to be transformed.
-     * @return A {@link MultiValuedMap} containing all staff members of the original list, grouped by role.
+     * @param staffList List of {@link StaffMember} to group.
+     * @return A {@link MultiValuedMap} mapping {@link StaffMember.Role} to collections of staff.
      */
     public MultiValuedMap<StaffMember.Role, StaffMember> getStaffByRole(List<StaffMember> staffList) {
         MultiValuedMap<StaffMember.Role, StaffMember> staffByRole = new ArrayListValuedHashMap<>();
@@ -31,29 +31,31 @@ public class Util {
     }
 
     /**
-     * Evaluates the staff level at a given shift, time and for a given role.
+     * Evaluates how many staff members of a given role are scheduled for a particular day and shift.
      *
-     * @param staffByRole The grouped Map containing staff members grouped by role (see {@link #getStaffByRole(List)}
-     * @param day         The day for which we want to evaluate.
-     * @param shift       The shift we want to evaluate.
-     * @param role        The role of Staff we want to evaluate.
-     * @return A {@link MultiKeyMap} with the input parameters as key and the staff count as the value.
+     * @param staffByRole {@link MultiValuedMap} grouping staff by their role.
+     * @param day         Day of week for which to count.
+     * @param shift       {@link StaffMember.Shift} for which to count.
+     * @param role        The {@link StaffMember.Role} to filter by.
+     * @return A {@link MultiKeyMap} where the key is (role, day, shift) and the value is the count of staff.
      */
-    public MultiKeyMap<Object, Integer> getStaffLevels(MultiValuedMap<StaffMember.Role, StaffMember> staffByRole, DayOfWeek day, StaffMember.Shift shift, StaffMember.Role role) {
+    public MultiKeyMap<Object, Integer> getStaffLevels(
+        MultiValuedMap<StaffMember.Role, StaffMember> staffByRole,
+        DayOfWeek day,
+        StaffMember.Shift shift,
+        StaffMember.Role role
+    ) {
         Collection<StaffMember> staffPerRole = staffByRole.get(role);
         int staffCount = (int) staffPerRole.stream()
-                .filter(staffMember -> staffMember.getRole().equals(role))
-                .filter(staffMember -> {
-                    StaffMember.Shift assignedShift = staffMember.getShiftOnDay(day);
-                    return assignedShift != null && assignedShift.equals(shift);
-                })
-                .count();
+            .filter(staffMember -> staffMember.getRole().equals(role))
+            .filter(staffMember -> {
+                StaffMember.Shift assignedShift = staffMember.getShiftOnDay(day);
+                return assignedShift != null && assignedShift.equals(shift);
+            })
+            .count();
+
         MultiKeyMap<Object, Integer> staffLevel = new MultiKeyMap<>();
         staffLevel.put(role, day, shift, staffCount);
         return staffLevel;
     }
-
-
-
-
 }

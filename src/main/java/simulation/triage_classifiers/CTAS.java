@@ -2,8 +2,19 @@ package simulation.triage_classifiers;
 
 import simulation.Patient.TriageLevel;
 
+/**
+ * Canadian Triage and Acuity Scale (CTAS) classifier implementation.
+ * Maps diagnosis codes to {@link TriageLevel} according to CTAS guidelines.
+ */
 public class CTAS implements TriageClassifier {
 
+    /**
+     * Classifies a patient into a triage level based on diagnosis code.
+     *
+     * @param diagnosis_code The diagnosis code to classify.
+     * @return Corresponding {@link TriageLevel}.
+     * @throws IllegalArgumentException If the diagnosis code is not recognized.
+     */
     @Override
     public TriageLevel classify(int diagnosis_code) {
         switch (diagnosis_code) {
