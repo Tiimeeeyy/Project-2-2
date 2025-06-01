@@ -19,6 +19,15 @@ import java.util.logging.Level;
 /**
  * Simulator that uses a Poisson process to model patient arrivals,
  * handling treatment, waiting, and discharge in an emergency room.
+ * <p>
+ * This class is responsible for:
+ * <ul>
+ *   <li>Initializing simulation parameters and resources (ER, timers, queues).</li>
+ *   <li>Generating patient arrivals based on a time‐dependent Poisson distribution.</li>
+ *   <li>Moving patients from the waiting queue into treatment rooms when available.</li>
+ *   <li>Processing ongoing treatments and discharging patients once their service time elapses.</li>
+ *   <li>Collecting and printing summary statistics at the end of the simulation period.</li>
+ * </ul>
  */
 @Log
 @Getter
@@ -36,16 +45,18 @@ public class PoissonSimulator {
     private int deltaHours;
     private final Expression arrivalExpression;
     private final Argument t;
+    private final Map<Patient.TriageLevel, Double> avgTreatmentTimes;
     private boolean useConfig;
 
-    private final Map<Patient.TriageLevel, Double> avgTreatmentTimes;
-
     /**
-     * Constructs a PoissonSimulator using the specified population size.
-     * Initializes configuration, emergency room, timing, and arrival functions.
+     * Constructs a PoissonSimulator with a specified population size.
+     * <p>
+     * Uses default emergency room settings ("MUMC", capacity 30, 15 treatment rooms)
+     * and a constant arrival rate of 1 (for testing or custom runs).
+     * </p>
      *
      * @param populationSize Population size of the city containing the hospital.
-     * @throws IOException If configuration cannot be loaded.
+     * @throws IOException If loading {@link Config} fails.
      */
     public PoissonSimulator(int populationSize) throws IOException {
         this.config = Config.getInstance();
@@ -72,10 +83,13 @@ public class PoissonSimulator {
     }
 
     /**
-     * Constructs a PoissonSimulator using configuration parameters.
-     * Initializes configuration, emergency room, timing, and arrival functions.
+     * Constructs a PoissonSimulator using configuration parameters from {@link Config}.
+     * <p>
+     * Reads population size, ER name, capacity, treatment rooms, and patient arrival function
+     * from the JSON‐backed {@link Config} instance.
+     * </p>
      *
-     * @throws IOException If configuration cannot be loaded.
+     * @throws IOException If loading {@link Config} fails.
      */
     public PoissonSimulator() throws IOException {
         this.config = Config.getInstance();
@@ -90,12 +104,19 @@ public class PoissonSimulator {
         this.deltaHours = 0;
         this.useConfig = true;
         this.t = new Argument("t=0");
+
+        // Confirm non‐commercial use for mxparser
         License.iConfirmNonCommercialUse("KEN12");
-        String exprString = config.getPatientArrivalFunctions().get(config.getDefaultArrivalFunction());
+        String exprString = config.getPatientArrivalFunctions()
+                                   .get(config.getDefaultArrivalFunction());
         this.arrivalExpression = new Expression(exprString, t);
         System.out.println(
-            "Initialized with expression '" + config.getDefaultArrivalFunction() + "': f(t) = " + arrivalExpression.getExpressionString()
+            "Initialized with expression '"
+            + config.getDefaultArrivalFunction()
+            + "': f(t) = "
+            + arrivalExpression.getExpressionString()
         );
+
         this.treatingPatients = new ArrayList<>();
         this.treatedPatients = new ArrayList<>();
         this.epsilon = 0.001;
@@ -111,10 +132,10 @@ public class PoissonSimulator {
     }
 
     /**
-     * Runs the simulation for the specified duration, processing patient
-     * arrivals, treatments, and discharges on an hourly basis.
+     * Runs the simulation for a given duration, processing patient arrivals,
+     * treatments, and discharges on an hourly basis.
      *
-     * @param simulationDuration Duration for which to run the simulation.
+     * @param simulationDuration Total duration of the simulation (e.g., Duration.ofDays(7)).
      */
     public void runSimulation(Duration simulationDuration) {
         LocalDateTime endTime = currentTime.plus(simulationDuration);
@@ -130,8 +151,14 @@ public class PoissonSimulator {
     }
 
     /**
-     * Processes one hour of simulation: generates arrivals, processes treatments,
-     * moves waiting patients to treatment, and records data.
+     * Processes one hourly time step in the simulation:
+     * <ol>
+     *   <li>Generate new arrivals via a Poisson distribution.</li>
+     *   <li>Add arriving patients to the ER queue (reject if full).</li>
+     *   <li>Process ongoing treatments and discharge if complete.</li>
+     *   <li>Move waiting patients into available treatment rooms.</li>
+     *   <li>Record queue, treatment, and room availability data.</li>
+     * </ol>
      */
     private void processHour() {
         int newPatientCount = generatePatientArrivals();
@@ -154,15 +181,15 @@ public class PoissonSimulator {
         data[4][deltaHours] = er.getTreatmentRooms() - er.getOccupiedTreatmentRooms();
 
         System.out.println(
-            "Hour summary: Waiting=" + er.getWaitingPatients().size() +
-            ", In treatment=" + treatingPatients.size() +
-            ", Rooms available=" + (er.getTreatmentRooms() - er.getOccupiedTreatmentRooms())
+            "Hour summary: Waiting=" + er.getWaitingPatients().size()
+            + ", In treatment=" + treatingPatients.size()
+            + ", Rooms available=" + (er.getTreatmentRooms() - er.getOccupiedTreatmentRooms())
         );
     }
 
     /**
-     * Processes ongoing treatments, discharging patients whose treatment
-     * duration has elapsed.
+     * Iterates over currently treated patients and discharges those whose
+     * sampled treatment time has elapsed.
      */
     private void processTreatments() {
         Iterator<Patient> iterator = treatingPatients.iterator();
@@ -180,7 +207,8 @@ public class PoissonSimulator {
     }
 
     /**
-     * Moves highest-priority waiting patients to available treatment rooms.
+     * Moves highest‐priority waiting patients into available treatment rooms
+     * until either no rooms remain or no patients are waiting.
      */
     private void moveWaitingToTreatment() {
         while (er.hasTreatmentRoomAvailable() && !er.getWaitingPatients().isEmpty()) {
@@ -192,23 +220,29 @@ public class PoissonSimulator {
     }
 
     /**
-     * Generates a random number of patient arrivals based on Poisson distribution,
-     * considering seasonal, weekday, and hourly factors.
+     * Computes the number of new patient arrivals in the current hour using a
+     * Poisson distribution adjusted for seasonality (monthly), weekday factors,
+     * and hourly factors.
      *
-     * @return Number of new patient arrivals.
+     * @return Number of new arrivals this hour.
      */
     private int generatePatientArrivals() {
-        double[] weekdayFactors = {0.8647, 1.1324, 1.0294, 1.0294, 1.0294, 1.0088, 0.9059};
+        // Factors for each day of week (Monday = index 1)
+        double[] weekdayFactors = {
+            0.8647, 1.1324, 1.0294, 1.0294, 1.0294, 1.0088, 0.9059
+        };
+        // Hourly multipliers for all 24 hours
         double[] hourFactors = {
-            0.5236, 0.48, 0.4364, 0.3927, 0.3927, 0.3927, 0.3927, 0.5236,
-            0.96, 1.5273, 1.7455, 1.6582, 1.44, 1.3091, 1.6582, 1.3964,
-            1.1782, 1.1782, 1.1782, 1.1782, 1.1782, 1.1782, 0.96, 0.7418
+            0.5236, 0.48,    0.4364, 0.3927, 0.3927, 0.3927, 0.3927, 0.5236,
+            0.96,   1.5273,  1.7455, 1.6582, 1.44,   1.3091, 1.6582, 1.3964,
+            1.1782, 1.1782,  1.1782, 1.1782, 1.1782, 1.1782, 0.96,   0.7418
         };
 
         int hour = currentTime.getHour();
         int dayOfWeek = currentTime.getDayOfWeek().getValue();
         int month = currentTime.getMonthValue();
 
+        // Set 't' argument to current month for seasonal function
         t.setArgumentValue(month);
         double averageDailyRate = arrivalExpression.calculate();
         double weekdayRate = averageDailyRate * weekdayFactors[dayOfWeek - 1];
@@ -219,9 +253,9 @@ public class PoissonSimulator {
     }
 
     /**
-     * Generates a random diagnosis index based on predefined probabilities.
+     * Samples a diagnosis index (1–17) based on predefined probabilities.
      *
-     * @return Diagnosis index (1-based).
+     * @return Diagnosis code (1‐based index).
      */
     private int generateDiagnosis() {
         double[] diagnosisProbs = {
@@ -239,14 +273,21 @@ public class PoissonSimulator {
                 return i + 1;
             }
         }
-        return diagnosisProbs.length; // fallback
+        // Fallback in case cumulative never exceeds r
+        return diagnosisProbs.length;
     }
 
     /**
-     * Generates a random Patient with a unique ID, random name, age, and triage level.
-     * There is a small chance to upgrade triage level randomly.
+     * Generates a random {@link Patient} with:
+     * <ul>
+     *   <li>A unique UUID.</li>
+     *   <li>A synthetic name "PatientXXXX".</li>
+     *   <li>An age between 5 and 99.</li>
+     *   <li>A triage level classified by {@link MTS}.</li>
+     *   <li>A 5% chance to upgrade one triage level.</li>
+     * </ul>
      *
-     * @return A newly generated Patient.
+     * @return Newly created {@link Patient}.
      */
     private Patient generateRandomPatient() {
         UUID id = UUID.randomUUID();
@@ -255,22 +296,26 @@ public class PoissonSimulator {
         int diagnosis = generateDiagnosis();
         Patient.TriageLevel triageLevel = new MTS().classify(diagnosis);
 
+        // 5% chance to escalate triage priority
         if (random.nextDouble() < 0.05) {
             switch (triageLevel) {
                 case BLUE -> triageLevel = Patient.TriageLevel.GREEN;
                 case GREEN -> triageLevel = Patient.TriageLevel.YELLOW;
                 case YELLOW -> triageLevel = Patient.TriageLevel.ORANGE;
                 case ORANGE -> triageLevel = Patient.TriageLevel.RED;
-                default -> { /* RED stays RED */ }
+                default -> {
+                    // RED remains RED
+                }
             }
         }
         return new Patient(id, name, age, triageLevel, currentTime);
     }
 
     /**
-     * Samples an exponentially distributed treatment time based on the patient's triage level.
+     * Samples an exponentially distributed treatment time (in minutes)
+     * based on the patient's average service time for their triage level.
      *
-     * @param patient The patient for whom to compute treatment time.
+     * @param patient Patient for whom to sample treatment duration.
      * @return Sampled treatment duration in minutes.
      */
     private double getTreatmentTimeForPatient(Patient patient) {
@@ -280,21 +325,28 @@ public class PoissonSimulator {
     }
 
     /**
-     * Prints statistics summarizing the simulation: total patients, waiting times,
-     * treatment times, and other relevant metrics.
+     * Prints summary statistics at the end of the simulation, including:
+     * <ul>
+     *   <li>Total population size.</li>
+     *   <li>Simulation period (hours).</li>
+     *   <li>Total patients (treated, in treatment, waiting, rejected).</li>
+     *   <li>Number treated, in treatment, waiting, and rejected.</li>
+     *   <li>Average waiting time and treatment time (if any patients treated).</li>
+     * </ul>
      */
     private void printStatistics() {
         System.out.println("\n========== ER SIMULATION STATISTICS ==========");
         System.out.println("Population size: " + populationSize);
         System.out.println(
-            "Simulation period: " + Duration.between(
-                currentTime.minusHours(1), currentTime.plusHours(1)
-            ).toHours() + " hours"
+            "Simulation period: "
+            + Duration.between(currentTime.minusHours(1), currentTime.plusHours(1)).toHours()
+            + " hours"
         );
-        System.out.println(
-            "Total patients: " + (treatedPatients.size() + treatingPatients.size()
-            + er.getWaitingPatients().size() + rejectedPatients)
-        );
+        int totalPatients = treatedPatients.size()
+                          + treatingPatients.size()
+                          + er.getWaitingPatients().size()
+                          + rejectedPatients;
+        System.out.println("Total patients: " + totalPatients);
         System.out.println("Patients treated: " + treatedPatients.size());
         System.out.println("Patients in treatment: " + treatingPatients.size());
         System.out.println("Patients waiting: " + er.getWaitingPatients().size());
@@ -302,10 +354,15 @@ public class PoissonSimulator {
 
         long totalWaitingMinutes = 0;
         long totalTreatmentMinutes = 0;
-
         for (Patient patient : treatedPatients) {
-            Duration waitingTime = Duration.between(patient.getArrivalTime(), patient.getTreatmentStartTime());
-            Duration treatmentTime = Duration.between(patient.getTreatmentStartTime(), patient.getDischargeTime());
+            Duration waitingTime = Duration.between(
+                patient.getArrivalTime(),
+                patient.getTreatmentStartTime()
+            );
+            Duration treatmentTime = Duration.between(
+                patient.getTreatmentStartTime(),
+                patient.getDischargeTime()
+            );
             totalWaitingMinutes += waitingTime.toMinutes();
             totalTreatmentMinutes += treatmentTime.toMinutes();
         }
