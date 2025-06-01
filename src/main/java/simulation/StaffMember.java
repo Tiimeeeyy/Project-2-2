@@ -1,16 +1,17 @@
 package simulation;
 
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.DayOfWeek;
 import java.util.HashMap;
 import java.util.UUID;
 
 /**
- * Represents a Staff Member working in the Emergency Room. For efficient usage and computations, we chose a Hashmap as
- * the representation for the Schedule for efficiency.
+ * Represents a staff member in the emergency room, including schedule and role.
  */
-@Data
+@Getter
+@Setter
 public class StaffMember {
     private final UUID id;
     private String name;
@@ -18,11 +19,12 @@ public class StaffMember {
     private Role role;
 
     /**
-     * Creates a Staff Member object with given parameters, for normal usage refer to createStaffMember method.
-     * @param id The id of the staff member
-     * @param name The name of the Staff member
-     * @param schedule The (initially empty) schedule of the staff worker
-     * @param role The role of the Staff member
+     * Constructs a StaffMember with specified parameters.
+     *
+     * @param id       Unique identifier of the staff member.
+     * @param name     Name of the staff member.
+     * @param schedule Schedule map for the staff member.
+     * @param role     Role of the staff member.
      */
     public StaffMember(UUID id, String name, HashMap<DayOfWeek, Shift> schedule, Role role) {
         this.id = id;
@@ -32,77 +34,75 @@ public class StaffMember {
     }
 
     /**
-     * Creates a staff member with random UUID and random name based on UUID. If you wish to use names and UUID as params, refer to class
-     * constructor. Additionally, the initial schedule will be assigned empty and with a size of 7 (for each day of the week) for optimal memory use.
-     * @param role The role the staff member takes.
-     * @return A staff member object.
+     * Creates a new staff member with a random UUID and name, with an empty schedule.
+     *
+     * @param role Role of the new staff member.
+     * @return Newly created StaffMember.
      */
     public StaffMember createStaffMember(Role role) {
         UUID id = UUID.randomUUID();
         HashMap<DayOfWeek, Shift> schedule = new HashMap<>(7);
-        String name = "simulation.StaffMember" + Math.abs(id.hashCode() % 10000);
+        String name = "StaffMember" + Math.abs(id.hashCode() % 10000);
         return new StaffMember(id, name, schedule, role);
     }
 
     /**
-     * Adds / assigns a shift to the given Staff Member. Shifts are characterized by:
-     * @param day The day the shift should be added for.
-     * @param shiftType The type of shift to be assigned (see @enum Shift)
+     * Assigns a shift to this staff member on a given day.
+     *
+     * @param day       Day of week to assign the shift.
+     * @param shiftType Type of shift to assign.
+     * @throws InvalidShift If a shift is already assigned for that day.
      */
     public void assignShift(DayOfWeek day, Shift shiftType) {
-        if (getShiftOnDay(day) != null) {
+        if (schedule.get(day) == null) {
             schedule.put(day, shiftType);
         } else {
             throw new InvalidShift("Shift cannot be assigned for day " + day + " . Day is already populated!");
         }
-
     }
 
     /**
-     * Resets the schedule for simulation purposes. This should be done, once a simulated week passes.
+     * Clears the schedule for the staff member (e.g., at the end of a simulation week).
      */
     public void resetSchedule() {
         schedule.clear();
     }
 
     /**
-     * Gets the shift assigned to a staff member on a given day.
-     * @param day The day we want to check for.
-     * @return The shift that is assigned on that day. Can return null, therefore can also check if a shift is assigned.
+     * Retrieves the shift assigned to this staff member on a given day.
+     *
+     * @param day Day of week to look up.
+     * @return Assigned shift for that day, or {@code null} if none.
      */
     public Shift getShiftOnDay(DayOfWeek day) {
         return schedule.get(day);
     }
 
-
     /**
-     * Defines the different roles Staff member can take on. Additionally, an accessLevel is assigned.
+     * Defines possible roles for staff members, each with an access level.
      */
     public enum Role {
         DOCTOR(1),
         NURSE(2),
         ADMINISTRATIVE(3);
 
+        private final int accessLevel;
+
         Role(int accessLevel) {
+            this.accessLevel = accessLevel;
         }
     }
 
     /**
-     * Defines the types of shifts that exist in the Simulation.
-     * A shift is assumed to be 7-8 hours (36-40 hr work week) long, and a double shift
-     * is defined as the maximum shift length in NL, 12 hours. Break is considered and added in the comments.
+     * Defines the types of shifts available for assignment.
      */
     public enum Shift {
-        DAY, // 8 Hours from 07:00 - 15:30 (30-min break incl)
-        EVENING, // 8 Hours from 15:30 until 00:00 (30-min break incl)
-        NIGHT, // 7 Hours from 00:00 until 7:00 (30-min break included)
-        FREE, // No work on the day
-        DOUBLE_EARLY, // 12-hour shift, 07:00 - 19:00 (45-min break incl)
-        DOUBLE_LATE, // 12-hour shift, 12:00 - 00:00 (45-min break incl)
-        ON_CALL,
-    }
-
-    public Role getRole() {
-        return role;
+        DAY,         // 8 Hours: 07:00 - 15:30 (30-min break included)
+        EVENING,     // 8 Hours: 15:30 - 00:00 (30-min break included)
+        NIGHT,       // 7 Hours: 00:00 - 07:00 (30-min break included)
+        FREE,        // No work
+        DOUBLE_EARLY,// 12 Hours: 07:00 - 19:00 (45-min break included)
+        DOUBLE_LATE, // 12 Hours: 12:00 - 00:00 (45-min break included)
+        ON_CALL      // On-call duty
     }
 }

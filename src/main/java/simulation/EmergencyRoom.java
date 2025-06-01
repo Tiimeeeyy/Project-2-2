@@ -1,43 +1,44 @@
 package simulation;
 
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.Comparator;
 import java.util.PriorityQueue;
 
 /**
- * Class that described the emergency room. 
- * Manages patient waiting queue, treatment rooms and capacity constraints.
+ * Represents an emergency room that manages patient wait queues,
+ * treatment rooms, and capacity constraints.
  */
-@Data
+@Getter
+@Setter
 public class EmergencyRoom {
-    private String name;
-    private int capacity;
-    private PriorityQueue<Patient> waitingPatients;
-    private int treatmentRooms;
+    private final String name;
+    private final int capacity;
+    private final PriorityQueue<Patient> waitingPatients;
+    private final int treatmentRooms;
     private int occupiedTreatmentRooms;
 
-    /**Constructs a enw Emergency Room Object
+    /**
+     * Constructs a new EmergencyRoom with specified parameters.
      *
-     * @param name The name of the Emergency Room
-     * @param capacity The maximum capacity / number of patients that can wait
-     * @param treatmentRooms Number of treatment rooms available
+     * @param name           The name of the emergency room.
+     * @param capacity       Maximum number of patients that can wait.
+     * @param treatmentRooms Number of available treatment rooms.
      */
     public EmergencyRoom(String name, int capacity, int treatmentRooms) {
         this.name = name;
         this.capacity = capacity;
         this.treatmentRooms = treatmentRooms;
         this.occupiedTreatmentRooms = 0;
-
-        this.waitingPatients = new PriorityQueue<>(
-                Comparator.comparingInt(p -> p.getTriageLevel().getPriority())
-        );
+        this.waitingPatients = new PriorityQueue<>(Comparator.comparingInt(p -> p.getTriageLevel().getPriority()));
     }
 
     /**
-     * Attempts to add a patient to the waiting room
-     * @param patient The patient to add to the queue
-     * @return true if patient can be added, false otherwise
+     * Attempts to add a patient to the waiting queue.
+     *
+     * @param patient The patient to add.
+     * @return {@code true} if added successfully; {@code false} if at capacity.
      */
     public boolean addPatient(Patient patient) {
         if (waitingPatients.size() < capacity) {
@@ -48,23 +49,25 @@ public class EmergencyRoom {
     }
 
     /**
-     * Retrieves and removes the highest priority patient from the waiting queue.
-     * @return The next patient to be treated based on triage level
+     * Retrieves and removes the highest priority waiting patient.
+     *
+     * @return The next patient for treatment, or {@code null} if none.
      */
     public Patient getNextPatient() {
         return waitingPatients.poll();
     }
 
     /**
-     * Checks if there are any treatment rooms available.
-     * @return True if at least one treatment room is available, false otherwise
+     * Checks if a treatment room is available.
+     *
+     * @return {@code true} if at least one room is free; {@code false} otherwise.
      */
     public boolean hasTreatmentRoomAvailable() {
         return occupiedTreatmentRooms < treatmentRooms;
     }
 
     /**
-     * Marks a treatment room as occupied. Only increases the count if treatment rooms are available
+     * Marks one treatment room as occupied, if available.
      */
     public void occupyTreatmentRoom() {
         if (occupiedTreatmentRooms < treatmentRooms) {
@@ -73,31 +76,11 @@ public class EmergencyRoom {
     }
 
     /**
-     * Marks a treatment room as free. Only decreases the amount if at least one treatment room is occupied
+     * Frees one occupied treatment room, if any are occupied.
      */
     public void freeTreatmentRoom() {
         if (occupiedTreatmentRooms > 0) {
             occupiedTreatmentRooms--;
         }
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public int getCapacity() {
-        return capacity;
-    }
-
-    public PriorityQueue<Patient> getWaitingPatients() {
-        return waitingPatients;
-    }
-
-    public int getTreatmentRooms() {
-        return treatmentRooms;
-    }
-
-    public int getOccupiedTreatmentRooms() {
-        return occupiedTreatmentRooms;
     }
 }

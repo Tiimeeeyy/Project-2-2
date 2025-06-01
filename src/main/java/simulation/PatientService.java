@@ -1,9 +1,14 @@
 package simulation;
 
-import lombok.Setter;
 import lombok.Getter;
+import lombok.Setter;
 
-@Getter @Setter
+/**
+ * Represents a service offered to patients, including service name,
+ * associated triage level, probability of occurrence, and time bounds.
+ */
+@Getter
+@Setter
 public class PatientService {
     private String name;
     private String triageLevel;

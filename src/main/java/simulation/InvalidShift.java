@@ -1,9 +1,14 @@
 package simulation;
 
 /**
- * Custom exception to be thrown, when a given shift cant be added to the staff users schedule.
+ * Exception thrown when attempting to assign an invalid shift to a staff member.
  */
 public class InvalidShift extends RuntimeException {
+    /**
+     * Constructs a new InvalidShift exception with the specified detail message.
+     *
+     * @param message Detailed message for the exception.
+     */
     public InvalidShift(String message) {
         super(message);
     }
