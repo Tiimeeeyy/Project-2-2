@@ -2,6 +2,7 @@ package simulation;
 
 import lombok.Getter;
 import lombok.extern.java.Log;
+import simulation.triage_classifiers.CTAS;
 import simulation.triage_classifiers.MTS;
 
 import org.apache.commons.math3.distribution.ExponentialDistribution;
@@ -161,6 +162,7 @@ public class PoissonSimulator {
      * </ol>
      */
     private void processHour() {
+        data[0][deltaHours] = deltaHours;
         int newPatientCount = generatePatientArrivals();
         System.out.println("\n" + currentTime + " - New patients arriving: " + newPatientCount);
         data[1][deltaHours] = newPatientCount;
@@ -294,7 +296,7 @@ public class PoissonSimulator {
         String name = "Patient" + Math.abs(id.hashCode() % 10000);
         int age = 5 + random.nextInt(95);
         int diagnosis = generateDiagnosis();
-        Patient.TriageLevel triageLevel = new MTS().classify(diagnosis);
+        Patient.TriageLevel triageLevel = new CTAS().classify(diagnosis);
 
         // 5% chance to escalate triage priority
         if (random.nextDouble() < 0.05) {

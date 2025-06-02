@@ -99,7 +99,13 @@ function initializeCharts() {
     triageChart = new Chart(triageCtx, {
         type: 'doughnut',
         data: {
-            labels: ['RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE'],
+            labels: [
+                'Immediate', 
+                'Emergent', 
+                'Urgent', 
+                'Semi-urgent', 
+                'Non-urgent'
+            ],
             datasets: [{
                 data: [0, 0, 0, 0, 0],
                 backgroundColor: [
@@ -167,6 +173,8 @@ function updateCharts(chartData, triageData) {
     patientFlowChart.data.datasets[1].data = chartData.waiting;
     patientFlowChart.data.datasets[2].data = chartData.treating;
     patientFlowChart.update('none');
+    // Update patient flow chart
+    patientFlowChart.data.labels = labels;
     
     // Update triage chart
     const triageCounts = triageData.triageCounts;

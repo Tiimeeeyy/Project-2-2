@@ -1,8 +1,8 @@
 {
   "populationSize": 150000,
   "ERName": "MUMC",
-  "ERCapacity": 30,
-  "ERTreatmentRooms": 15,
+  "ERCapacity": 500,
+  "ERTreatmentRooms": 250,
   "patientServices": [
     {
       "name": "ambulance",
