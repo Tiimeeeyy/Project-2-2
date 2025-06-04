@@ -1,8 +1,8 @@
 {
   "populationSize": 150000,
   "ERName": "MUMC",
-  "ERCapacity": 500,
-  "ERTreatmentRooms": 250,
+  "ERCapacity": 30,
+  "ERTreatmentRooms": 15,
   "patientServices": [
     {
       "name": "ambulance",
@@ -43,8 +43,24 @@
 
   "patientArrivalFunctions": {
     "constant": "1",
+    "constant_2x": "2",
+    "constant_0.5x": "0.5",
     "linear": "t",
-    "sinusoidal_24h": "87.808431 * sin( (pi/12)*(t-1) + 0.132320 ) + 4237.560076"
+    "linear_wk_2x": "t/42",
+    "sinusoidal_24h": "(-0.25)*cos((pi/12)*t)+0.75",
+    "sinusoidal_24h_2x": "2*((-0.25)*cos((pi/12)*t)+0.75)",
+    "sinusoidal_24h_0.5x": "0.5*((-0.25)*cos((pi/12)*t)+0.75)",
+    "sin_full_range_24h": "cos((pi/12)*t)+1",
+    "sin_weekend_1.5x": "max(min((10*cos((1/42)*(t-160))),1.5),(-0.25)*cos((pi/12)*t)+0.75",
+    "month_5x": "max((1000*cos((pi/336)*(t+336))-995),((-0.25)*cos((pi/12)*t)+0.75))",
+    "month_10x": "max((1000*cos((pi/336)*(t+336))-990),((-0.25)*cos((pi/12)*t)+0.75))",
+    "wk_2wk_4wk_2_5_10": "max((1000*cos((pi/336)*(t+336))-990),(1000*cos((pi/168)*(t+168))-995),(10*cos((pi/84)*(t+84))-9),((-0.25)*cos((pi/12)*t)+0.75))",
+    "3rd_week_3x": "max(min((100*cos((pi/336)*(t-420))-70),3),((-0.25)*cos((pi/12)*t)+0.75))",
+    "sin_lincrease_2x_wk": "(-0.25)*cos((pi/12)*t)+0.25+(t/168)",
+    "sin_lincrease_5x_wk": "(-0.25)*cos((pi/12)*t)+0.25+(5t/168)",
+    "sin_ldecrease_2x_wk1": "max(((-0.25)*cos((pi/12)*t)+0.25-((2t-168)/84)),(-0.25)*cos((pi/12)*t)+0.75",
+    "sin_ldecrease_5x_wk1": "max(((-0.25)*cos((pi/12)*t)+0.25-((5t-420)/84)),(-0.25)*cos((pi/12)*t)+0.75",
+    "sin_ldecrease_5x_wk4": "max(((-0.25)*cos((pi/12)*t)+0.25-((5t-1680)/336)),(-0.25)*cos((pi/12)*t)+0.75"
   },
   "defaultArrivalFunction": "sinusoidal_24h",
   "patientMinAge": 5,
