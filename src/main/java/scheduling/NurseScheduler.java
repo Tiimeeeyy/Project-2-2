@@ -16,6 +16,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
+import static scheduling.SolutionExtractor.*;
+
 /**
  * Manages and solves the scheduling optimization problem specifically for Nursing staff
  * using a Linear Programming model.
@@ -51,7 +53,7 @@ public class NurseScheduler {
 
         if (nursingStaff.isEmpty()) {
             logger.info("No nursing staff found in the input. Returning an empty feasible schedule.");
-            return buildEmptyFeasibleOutput();
+            return SolutionExtractor.buildEmptyFeasibleOutput();
         }
 
         List<Demand> nurseDemands = fullInput.getDemands().stream()
@@ -207,7 +209,7 @@ public class NurseScheduler {
         // --- 7. Process and Return Results ---
         if (resultStatus == MPSolver.ResultStatus.OPTIMAL || resultStatus == MPSolver.ResultStatus.FEASIBLE) {
             logger.info("NurseScheduler: Solution found! Status: " + resultStatus + ", Objective value = " + objective.value());
-            return extractSolution(solver, fullInput, nursingStaff, lpShiftIds, x, totalRegHours, totalOtHours, totalActualHours, objective.value(), true);
+            return SolutionExtractor.extract(fullInput, nursingStaff, lpShiftIds, x, totalRegHours, totalOtHours, totalActualHours, objective.value(), true);
         } else {
             String statusMessage = "NurseScheduler: No optimal or feasible solution found. Status: " + resultStatus;
             logger.warning(statusMessage);
@@ -232,93 +234,5 @@ public class NurseScheduler {
         // Add other specific nurse roles defined in your Role enum
     }
 
-    private OptimizedScheduleOutput extractSolution(MPSolver solver, OptimizationInput fullInput,
-                                                    List<StaffMemberInterface> scheduledStaff, List<String> lpShiftIds,
-                                                    MPVariable[][][] x, MPVariable[][] totalRegHoursVar,
-                                                    MPVariable[][] totalOtHoursVar, MPVariable[][] totalActualHoursVar,
-                                                    double totalCost, boolean feasible) {
 
-        int numStaff = scheduledStaff.size();
-        int numLpShifts = lpShiftIds.size();
-        int numDays = fullInput.getNumDaysInPeriod();
-        int numWeeks = fullInput.getNumWeeksInPeriod();
-
-        OptimizedScheduleOutput.OptimizedScheduleOutputBuilder outputBuilder = OptimizedScheduleOutput.builder();
-
-        // Populate assignments
-        Map<UUID, Map<Integer, String>> allAssignments = new HashMap<>();
-        for (int n = 0; n < numStaff; n++) {
-            UUID staffId = scheduledStaff.get(n).getId();
-            Map<Integer, String> staffDailyAssignments = new HashMap<>();
-            for (int d = 0; d < numDays; d++) {
-                for (int sIdx = 0; sIdx < numLpShifts; sIdx++) {
-                    // Check if the variable exists and its solution value is close to 1
-                    if (x[n][sIdx][d] != null && x[n][sIdx][d].solutionValue() > 0.9) {
-                        staffDailyAssignments.put(d, lpShiftIds.get(sIdx));
-                        break; // Each staff member should have only one shift per day
-                    }
-                }
-            }
-            if (!staffDailyAssignments.isEmpty()) {
-                allAssignments.put(staffId, staffDailyAssignments);
-            }
-        }
-        outputBuilder.assignments(allAssignments);
-
-        // Populate weekly hours
-        Map<UUID, Map<Integer, Double>> allWeeklyRegularHours = new HashMap<>();
-        Map<UUID, Map<Integer, Double>> allWeeklyOvertimeHours = new HashMap<>();
-        Map<UUID, Map<Integer, Double>> allWeeklyTotalActualHours = new HashMap<>();
-
-        for (int n = 0; n < numStaff; n++) {
-            UUID staffId = scheduledStaff.get(n).getId();
-            Map<Integer, Double> regHoursMap = new HashMap<>();
-            Map<Integer, Double> otHoursMap = new HashMap<>();
-            Map<Integer, Double> actualHoursMap = new HashMap<>();
-
-            for (int w = 0; w < numWeeks; w++) {
-                regHoursMap.put(w, totalRegHoursVar[n][w] != null ? totalRegHoursVar[n][w].solutionValue() : 0.0);
-                otHoursMap.put(w, totalOtHoursVar[n][w] != null ? totalOtHoursVar[n][w].solutionValue() : 0.0);
-                actualHoursMap.put(w, totalActualHoursVar[n][w] != null ? totalActualHoursVar[n][w].solutionValue() : 0.0);
-            }
-
-            allWeeklyRegularHours.put(staffId, regHoursMap);
-            allWeeklyOvertimeHours.put(staffId, otHoursMap); // This was missing population
-            allWeeklyTotalActualHours.put(staffId, actualHoursMap); // This was missing population
-        }
-
-        outputBuilder.weeklyRegularHours(allWeeklyRegularHours);
-        outputBuilder.weeklyOvertimeHours(allWeeklyOvertimeHours);
-        outputBuilder.weeklyTotalActualHours(allWeeklyTotalActualHours);
-
-        // Set total cost and feasibility
-        outputBuilder.totalCost(totalCost);
-        outputBuilder.feasible(feasible);
-
-        return outputBuilder.build();
-    }
-
-    private OptimizedScheduleOutput buildInfeasibleOutput(String statusMessage) {
-        logger.warning("Building infeasible/error output for NurseScheduler: " + statusMessage);
-        // Return an empty but valid OptimizedScheduleOutput object
-        return OptimizedScheduleOutput.builder()
-                .assignments(new HashMap<>())
-                .weeklyRegularHours(new HashMap<>())
-                .weeklyOvertimeHours(new HashMap<>())
-                .weeklyTotalActualHours(new HashMap<>())
-                .totalCost(0)
-                .feasible(false)
-                .build();
-    }
-
-    private OptimizedScheduleOutput buildEmptyFeasibleOutput() {
-        return OptimizedScheduleOutput.builder()
-                .assignments(new HashMap<>())
-                .weeklyRegularHours(new HashMap<>())
-                .weeklyOvertimeHours(new HashMap<>())
-                .weeklyTotalActualHours(new HashMap<>())
-                .totalCost(0)
-                .feasible(true)
-                .build();
-    }
 }

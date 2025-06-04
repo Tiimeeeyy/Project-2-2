@@ -15,6 +15,8 @@ public enum Role {
     // Doctor Roles:
     RESIDENT_PHYSICIAN("MD_RESIDENT"),
     ATTENDING_PHYSICIAN("MD_ATTENDING"),
+    SURGEON("MD_SURGEON"),
+    CARDIOLOGIST("MD_CARDIO"),
     // General Staff role:
     ADMIN_CLERK("AC");
 
