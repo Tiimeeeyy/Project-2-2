@@ -14,13 +14,14 @@ public class ShiftDefinition {
 
     private final Shift concreteShift; // The corresponding concrete Shift enum value
 
+
     /**
      * Constructs a new ShiftDefinition.
      *
-     * @param lpShiftId The identifier for this shift as used in the Linear Program (e.g., "Ds").
-     * This corresponds to 's' in ShiftLength_s or X_nsd.
+     * @param lpShiftId     The identifier for this shift as used in the Linear Program (e.g., "Ds").
+     *                      This corresponds to 's' in ShiftLength_s or X_nsd.
      * @param concreteShift The concrete {@link Shift} enum value this LP shift maps to.
-     * The length and off-shift status will be derived from this.
+     *                      The length and off-shift status will be derived from this.
      */
     public ShiftDefinition(String lpShiftId, Shift concreteShift) {
         if (lpShiftId == null || lpShiftId.trim().isEmpty()) {
@@ -30,6 +31,7 @@ public class ShiftDefinition {
             throw new IllegalArgumentException("Concrete Shift enum value cannot be null.");
         }
 
+
         this.lpShiftId = lpShiftId.trim();
         this.concreteShift = concreteShift;
     }
@@ -37,6 +39,7 @@ public class ShiftDefinition {
     /**
      * Gets the length of this shift in hours, derived from the concrete {@link Shift} enum.
      * This value corresponds to ShiftLength_s in the LP.
+     *
      * @return The length of the shift in hours.
      */
     public double getLengthInHours() {
@@ -45,12 +48,19 @@ public class ShiftDefinition {
 
     /**
      * Checks if this shift is an off-shift (e.g., "Free"), derived from the concrete {@link Shift} enum.
+     *
      * @return true if this is an off-shift, false otherwise.
      */
     public boolean isOffShift() {
         return concreteShift.isOffShift();
     }
-
+    /**
+     * Gets the start time of this shift in hours from midnight, derived from the concrete {@link Shift} enum.
+     * @return The start time of the shift in hours from midnight.
+     */
+    public double getStartTimeInHoursFromMidnight() {
+        return concreteShift.getDefaultStartTimeInHoursFromMidnight();
+    }
     // It's good practice to override equals and hashCode if ShiftDefinition
     // objects are stored in collections like Sets or used as Map keys,
     // primarily based on the lpShiftId.

@@ -5,19 +5,20 @@ import com.google.ortools.linearsolver.MPConstraint;
 import com.google.ortools.linearsolver.MPObjective;
 import com.google.ortools.linearsolver.MPSolver;
 import com.google.ortools.linearsolver.MPVariable;
-import staff.*;
+import staff.Demand;
+import staff.Role;
+import staff.ShiftDefinition;
+import staff.StaffMemberInterface;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static scheduling.SolutionExtractor.*;
-// TODO: 10 hour rest period after 12 hour shift implementation + go over this in general
+
 /**
  * Manages and solves the scheduling optimization problem specifically for Attending Physicians
  * using a Linear Programming model.
@@ -25,9 +26,12 @@ import static scheduling.SolutionExtractor.*;
 public class PhysicianScheduler {
 
     private static final Logger logger = Logger.getLogger(PhysicianScheduler.class.getName());
-    private static final double INFINITY = MPSolver.infinity();
+    private static final double INFINITY = MPSolver.infinity(); // Using MPSolver.infinity() is cleaner
 
-    // Static block for OR-Tools native library loading (same as in NurseScheduler)
+    // Policy-driven or best-practice rest period for physicians
+    private static final double MINIMUM_REST_HOURS_AFTER_LONG_SHIFT = 10.0;
+    private static final double LONG_SHIFT_THRESHOLD_HOURS = 12.0;
+
     static {
         try {
             Loader.loadNativeLibraries();
@@ -43,7 +47,6 @@ public class PhysicianScheduler {
             throw new IllegalArgumentException("OptimizationInput cannot be null.");
         }
 
-        // 1. Filter for Attending Physician Staff and Relevant Demands
         List<StaffMemberInterface> physicianStaff = fullInput.getStaffMembers().stream()
                 .filter(staff -> isAttendingPhysicianRole(staff.getRole()))
                 .collect(Collectors.toList());
@@ -60,7 +63,6 @@ public class PhysicianScheduler {
         logger.info("Optimizing schedule for " + physicianStaff.size() + " attending physicians against "
                 + physicianDemands.size() + " physician demands.");
 
-        // 2. Create the solver
         MPSolver solver = MPSolver.createSolver("SCIP");
         if (solver == null) {
             logger.severe("Could not create OR-Tools solver for PhysicianScheduler.");
@@ -75,81 +77,34 @@ public class PhysicianScheduler {
         int numDays = fullInput.getNumDaysInPeriod();
         int numWeeks = fullInput.getNumWeeksInPeriod();
 
-        // --- 3. Create LP Variables (X_psd, totalRegHours_pw, totalOtHours_pw, totalActualHours_pw) ---
-        // 'p' for physician index
-        MPVariable[][][] x = new MPVariable[numStaff][numLpShifts][numDays];
+        MPVariable[][][] x = new MPVariable[numStaff][numLpShifts][numDays]; // p for physician, s for shift, d for day
         for (int p = 0; p < numStaff; p++) {
             for (int sIdx = 0; sIdx < numLpShifts; sIdx++) {
                 for (int d = 0; d < numDays; d++) {
-                    x[p][sIdx][d] = solver.makeBoolVar("x_phy_" + physicianStaff.get(p).getId().toString().substring(0,8) + "_" + lpShiftIds.get(sIdx) + "_" + d);
+                    x[p][sIdx][d] = solver.makeBoolVar("x_phy_" + physicianStaff.get(p).getId().toString().substring(0, 8) + "_" + lpShiftIds.get(sIdx) + "_" + d);
                 }
             }
         }
 
-        // Physician specific regular hours (e.g., 40h target)
         MPVariable[][] totalRegHours = new MPVariable[numStaff][numWeeks];
         MPVariable[][] totalOtHours = new MPVariable[numStaff][numWeeks];
         MPVariable[][] totalActualHours = new MPVariable[numStaff][numWeeks];
 
-        // Use parameters from fullInput, which should be configured for physicians
-        // For physicians, maxRegularHoursPerWeek might be 40.
-        // maxTotalHoursPerWeek might be 48 (if strictly following nurse rule policy).
-        int physicianMaxRegularHours = 40; // As per physician rule #1
-        // If "same rules as nurses" for max total, use input.getMaxTotalHoursPerWeek() (e.g. 48)
-        // Otherwise, this might be higher for physicians. For now, assume the nurse-like cap.
-        int physicianMaxTotalHours = fullInput.getMaxTotalHoursPerWeek();
-        int physicianMaxDailyHours = fullInput.getMaxHoursPerDay(); // e.g., 12
+        // Use physician-specific parameters or those from fullInput
+        int physicianMaxRegularHours = 40; // Default or policy for physicians
+        int physicianMaxTotalHours = fullInput.getMaxTotalHoursPerWeek(); // e.g., from config, could be higher for physicians than nurses
+        int physicianMaxDailyHours = fullInput.getMaxHoursPerDay();     // e.g., from config
 
         for (int p = 0; p < numStaff; p++) {
-            String staffIdPrefix = physicianStaff.get(p).getId().toString().substring(0,8);
+            String staffIdPrefix = physicianStaff.get(p).getId().toString().substring(0, 8);
             for (int w = 0; w < numWeeks; w++) {
                 totalRegHours[p][w] = solver.makeNumVar(0.0, physicianMaxRegularHours, "phy_regH_" + staffIdPrefix + "_" + w);
-                totalOtHours[p][w] = solver.makeNumVar(0.0, physicianMaxTotalHours, "phy_otH_" + staffIdPrefix + "_" + w);
+                totalOtHours[p][w] = solver.makeNumVar(0.0, physicianMaxTotalHours, "phy_otH_" + staffIdPrefix + "_" + w); // Max OT can be up to MaxTotal
                 totalActualHours[p][w] = solver.makeNumVar(0.0, physicianMaxTotalHours, "phy_actualH_" + staffIdPrefix + "_" + w);
             }
         }
 
-        // --- 4. Define Constraints ---
-        // Most constraints will be structurally identical to NurseScheduler:
-        // - Each physician assigned one LP shift per day: Sum_s (X_psd) = 1
-        // - Link X_psd to TotalActualHours_pw (weekly actual hours from shifts)
-        // - TotalActualHours_pw = TotalRegHours_pw + TotalOtHours_pw
-        // - Max daily hours (using physicianMaxDailyHours)
-        // - Demand/Coverage for physicianDemands
-
-        // (Implementation of these constraints would mirror NurseScheduler, replacing 'n' with 'p'
-        //  and using physician-specific parameters and variable arrays)
-
-        // **NEW/MODIFIED CONSTRAINT: 10-hour rest after 12-hour shift**
-        // This requires more detailed shift information (start/end times)
-        // For now, this is a placeholder for where this logic would go.
-        // If a physician p works a 12h shift s_12 on day d, they cannot work specific subsequent shifts.
-        // Example conceptual logic (needs refinement based on actual shift data):
-        for (int p = 0; p < numStaff; p++) {
-            for (int d = 0; d < numDays; d++) {
-                for (int s12Idx = 0; s12Idx < numLpShifts; s12Idx++) {
-                    ShiftDefinition shift12Def = lpShifts.get(lpShiftIds.get(s12Idx));
-                    if (shift12Def != null && shift12Def.getLengthInHours() == 12.0) {
-                        // This is a 12-hour shift.
-                        // Need to identify conflicting subsequent shifts within the next 10 hours.
-                        // This part requires defining shift start/end times.
-                        // If x[p][s12Idx][d] = 1, then for conflicting shifts s_conflict on day d or d+1,
-                        // x[p][s_conflict_idx][d_conflict] must be 0.
-                        // This would be a set of constraints like:
-                        // x[p][s12Idx][d] + x[p][s_conflict_idx][d_conflict] <= 1
-                        // Or more complex implications.
-                        // logger.warning("Rest period constraint for 12h physician shifts needs implementation detail based on shift timings.");
-                    }
-                }
-            }
-        }
-        // Due to the complexity of the rest period constraint without explicit shift timings,
-        // I will proceed with the other standard constraints for now.
-        // The user will need to provide shift start/end times or a clear way to define conflicting shifts
-        // to fully implement the 10-hour rest rule.
-
-        // Standard constraints (mirrored from NurseScheduler, adapted for physicians):
-        // Each physician one shift per day
+        // Constraint: Each physician is assigned exactly one LP shift per day
         for (int p = 0; p < numStaff; p++) {
             for (int d = 0; d < numDays; d++) {
                 MPConstraint c = solver.makeConstraint(1.0, 1.0, "phy_oneShift_p" + p + "_d" + d);
@@ -158,7 +113,8 @@ public class PhysicianScheduler {
                 }
             }
         }
-        // Link X_psd to TotalActualHours_pw
+
+        // Constraint: Link X_psd to TotalActualHours_pw
         for (int p = 0; p < numStaff; p++) {
             for (int w = 0; w < numWeeks; w++) {
                 MPConstraint c = solver.makeConstraint(0.0, 0.0, "phy_actualHoursCalc_p" + p + "_w" + w);
@@ -175,7 +131,8 @@ public class PhysicianScheduler {
                 }
             }
         }
-        // TotalActualHours_pw = TotalRegHours_pw + TotalOtHours_pw
+
+        // Constraint: TotalActualHours_pw = TotalRegHours_pw + TotalOtHours_pw
         for (int p = 0; p < numStaff; p++) {
             for (int w = 0; w < numWeeks; w++) {
                 MPConstraint c = solver.makeConstraint(0.0, 0.0, "phy_hourComposition_p" + p + "_w" + w);
@@ -184,7 +141,8 @@ public class PhysicianScheduler {
                 c.setCoefficient(totalOtHours[p][w], -1.0);
             }
         }
-        // Max daily hours per physician
+
+        // Constraint: Max daily hours per physician
         for (int p = 0; p < numStaff; p++) {
             for (int d = 0; d < numDays; d++) {
                 MPConstraint c = solver.makeConstraint(0, physicianMaxDailyHours, "phy_maxDailyH_p" + p + "_d" + d);
@@ -196,7 +154,8 @@ public class PhysicianScheduler {
                 }
             }
         }
-        // Demand/Coverage for physicianDemands
+
+        // Demand/Coverage Constraint for physicianDemands
         for (Demand demand : physicianDemands) {
             Role requiredRole = demand.getRequiredRole();
             int d = demand.getDayIndex();
@@ -204,7 +163,11 @@ public class PhysicianScheduler {
             int requiredCount = demand.getRequiredCount();
             int sIdx = lpShiftIds.indexOf(lpShiftId);
 
-            if (sIdx == -1 || requiredCount <=0) continue;
+            if (sIdx == -1) {
+                logger.warning("LP Shift ID '" + lpShiftId + "' in physician demand not found. Skipping this demand constraint.");
+                continue;
+            }
+            if (requiredCount <= 0) continue;
 
             MPConstraint c = solver.makeConstraint(requiredCount, INFINITY, "phy_demand_" + requiredRole + "_" + lpShiftId + "_d" + d);
             for (int p = 0; p < numStaff; p++) {
@@ -214,11 +177,53 @@ public class PhysicianScheduler {
             }
         }
 
+        // NEW CONSTRAINT: Minimum rest period after a long shift
+        for (int p = 0; p < numStaff; p++) { // For each physician
+            for (int d = 0; d < numDays; d++) { // For each day
+                for (int sLongIdx = 0; sLongIdx < numLpShifts; sLongIdx++) {
+                    ShiftDefinition longShiftDef = lpShifts.get(lpShiftIds.get(sLongIdx));
+
+                    if (longShiftDef != null && !longShiftDef.isOffShift() && longShiftDef.getLengthInHours() >= LONG_SHIFT_THRESHOLD_HOURS) {
+                        double longShiftStartHourRelativeToDayD = longShiftDef.getStartTimeInHoursFromMidnight();
+                        double longShiftEndHourRelativeToDayD = longShiftStartHourRelativeToDayD + longShiftDef.getLengthInHours();
+
+                        for (int conflictDayIndex = d; conflictDayIndex < Math.min(d + 2, numDays); conflictDayIndex++) {
+                            for (int sConflictIdx = 0; sConflictIdx < numLpShifts; sConflictIdx++) {
+                                if (conflictDayIndex == d && sConflictIdx == sLongIdx) continue;
+
+                                ShiftDefinition conflictShiftDef = lpShifts.get(lpShiftIds.get(sConflictIdx));
+                                if (conflictShiftDef == null || conflictShiftDef.isOffShift()) continue;
+
+                                double conflictShiftStartHourRelativeToItsDay = conflictShiftDef.getStartTimeInHoursFromMidnight();
+                                double longShiftEndAbsolute = longShiftEndHourRelativeToDayD;
+
+                                double conflictShiftStartAbsolute;
+                                if (conflictDayIndex == d) {
+                                    conflictShiftStartAbsolute = conflictShiftStartHourRelativeToItsDay;
+                                } else { // conflictDayIndex == d + 1
+                                    conflictShiftStartAbsolute = 24.0 + conflictShiftStartHourRelativeToItsDay;
+                                }
+
+                                if (conflictShiftStartAbsolute < (longShiftEndAbsolute + MINIMUM_REST_HOURS_AFTER_LONG_SHIFT)) {
+                                    MPConstraint restConstraint = solver.makeConstraint(0, 1.0,
+                                            "phy_rest_p" + p + "_d" + d + "_s" + lpShiftIds.get(sLongIdx) +
+                                                    "_conflicts_d" + conflictDayIndex + "_s" + lpShiftIds.get(sConflictIdx));
+                                    restConstraint.setCoefficient(x[p][sLongIdx][d], 1.0);
+                                    restConstraint.setCoefficient(x[p][sConflictIdx][conflictDayIndex], 1.0);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // --- 5. Define Objective Function (Minimize wage costs) ---
         MPObjective objective = solver.objective();
         for (int p = 0; p < numStaff; p++) {
             StaffMemberInterface physician = physicianStaff.get(p);
             double regularWage = physician.getRegularHourlyWage();
+            // Assuming physicians can also have overtime, adjust if their contracts differ
             double overtimeWage = regularWage * physician.getOvertimeMultiplier();
             for (int w = 0; w < numWeeks; w++) {
                 objective.setCoefficient(totalRegHours[p][w], regularWage);
@@ -234,22 +239,24 @@ public class PhysicianScheduler {
         // --- 7. Process and Return Results ---
         if (resultStatus == MPSolver.ResultStatus.OPTIMAL || resultStatus == MPSolver.ResultStatus.FEASIBLE) {
             logger.info("PhysicianScheduler: Solution found! Status: " + resultStatus + ", Objective value = " + objective.value());
-            // Use a shared or adapted extractSolution method
             return extract(fullInput, physicianStaff, lpShiftIds, x, totalRegHours, totalOtHours, totalActualHours, objective.value(), true);
         } else {
-            // Handle infeasible, unbounded, or error statuses
             String statusMessage = "PhysicianScheduler: No optimal or feasible solution found. Status: " + resultStatus;
             logger.warning(statusMessage);
             if (resultStatus == MPSolver.ResultStatus.INFEASIBLE) {
                 logger.warning("PhysicianScheduler: Problem is INFEASIBLE. Review constraints, demands, and available staff.");
+            } else if (resultStatus == MPSolver.ResultStatus.UNBOUNDED) {
+                logger.warning("PhysicianScheduler: Problem is UNBOUNDED. Review objective function and constraints.");
             }
             return buildInfeasibleOutput(statusMessage);
         }
     }
 
-    // Helper to identify attending physician roles (adapt based on your Role enum)
     private boolean isAttendingPhysicianRole(Role role) {
-        return role == Role.ATTENDING_PHYSICIAN || role == Role.SURGEON || role == Role.CARDIOLOGIST; // Add other non-resident physician roles
+        // Add all specific attending physician roles from your Role enum
+        return role == Role.ATTENDING_PHYSICIAN ||
+                role == Role.SURGEON || // Assuming surgeons are attending level for this scheduler
+                role == Role.CARDIOLOGIST; // Assuming cardiologists are attending level
+        // Exclude RESIDENT_PHYSICIAN if they have a separate scheduler or different rules
     }
-
 }
