@@ -12,12 +12,68 @@
         <header>
             <h1>ER Simulation Dashboard</h1>
             <div class="controls">
-                <label for="days">Simulation Days:</label>
-                <input type="number" id="days" value="7" min="1" max="30">
+                <div class="control-group">
+                    <label for="days">Simulation Days:</label>
+                    <input type="number" id="days" value="7" min="1" max="30">
+                </div>
+                
+                <div class="control-group">
+                    <label for="scenario">Scenario:</label>
+                    <select id="scenario">
+                        <option value="regular">Regular Operation</option>
+                        <option value="emergency">Emergency Scenario</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="triageLevel">Focus Triage Level:</label>
+                    <select id="triageLevel">
+                        <option value="">All Levels</option>
+                        <option value="RED">Immediate (RED)</option>
+                        <option value="ORANGE">Emergent (ORANGE)</option>
+                        <option value="YELLOW">Urgent (YELLOW)</option>
+                        <option value="GREEN">Semi-urgent (GREEN)</option>
+                        <option value="BLUE">Non-urgent (BLUE)</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="triageClassifier">Triage System:</label>
+                    <select id="triageClassifier">
+                        <option value="CTAS">CTAS (Canadian)</option>
+                        <option value="ESI">ESI (US)</option>
+                        <option value="MTS">MTS (UK)</option>
+                    </select>
+                </div>
+                
+                <button id="configBtn">Configure</button>
                 <button id="runSimulation">Run Simulation</button>
                 <div class="status" id="status">Ready</div>
             </div>
         </header>
+        
+        <!-- Configuration Modal -->
+        <div id="configModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Hyperparameter Configuration</h2>
+                <div class="config-grid">
+                    <div class="config-item">
+                        <label for="interarrivalTime">Inter-arrival Time (minutes):</label>
+                        <input type="number" id="interarrivalTime" value="15" min="1" max="60" step="0.1">
+                    </div>
+                    <div class="config-item">
+                        <label for="treatmentCapacity">Treatment Rooms:</label>
+                        <input type="number" id="treatmentCapacity" value="15" min="5" max="50">
+                    </div>
+                    <div class="config-item">
+                        <label for="waitingCapacity">Waiting Room Capacity:</label>
+                        <input type="number" id="waitingCapacity" value="30" min="10" max="100">
+                    </div>
+                </div>
+                <button id="saveConfig">Save Configuration</button>
+            </div>
+        </div>
         
         <div class="dashboard-grid">
             <div class="chart-container">
@@ -45,6 +101,20 @@
                 <h2>Resource Utilization</h2>
                 <div class="chart-wrapper">
                     <canvas id="utilizationChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="stats-container">
+                <h2>Utility Metrics</h2>
+                <div id="utilityArea">
+                    <p>Run a simulation to see utility metrics</p>
+                </div>
+            </div>
+            
+            <div class="stats-container">
+                <h2>Staff Statistics</h2>
+                <div id="staffStatsArea">
+                    <p>Run a simulation to see staff statistics</p>
                 </div>
             </div>
         </div>
