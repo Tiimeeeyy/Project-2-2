@@ -3,6 +3,7 @@ package simulation;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -17,9 +18,9 @@ public class Patient {
     private String name;
     private int age;
     private TriageLevel triageLevel;
-    private LocalDateTime arrivalTime;
-    private LocalDateTime treatmentStartTime;
-    private LocalDateTime dischargeTime;
+    private Duration arrivalTime;
+    private Duration treatmentTime;
+    private Duration dischargeTime;
 
     /**
      * Constructs a new Patient with the given attributes.
@@ -30,12 +31,14 @@ public class Patient {
      * @param triageLevel    Assigned triage level.
      * @param arrivalTime    Timestamp of patient arrival.
      */
-    public Patient(UUID id, String name, int age, TriageLevel triageLevel, LocalDateTime arrivalTime) {
+    public Patient(UUID id, String name, int age, TriageLevel triageLevel, Duration arrivalTime, Duration treatmentTime) {
         this.id = id;
         this.name = name;
         this.age = age;
         this.triageLevel = triageLevel;
         this.arrivalTime = arrivalTime;
+        this.treatmentTime = treatmentTime;
+        this.dischargeTime = arrivalTime.plus(treatmentTime);
     }
 
     /**

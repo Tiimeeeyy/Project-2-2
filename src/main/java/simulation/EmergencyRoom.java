@@ -3,6 +3,7 @@ package simulation;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.Duration;
 import java.util.Comparator;
 import java.util.PriorityQueue;
 
@@ -48,6 +49,7 @@ public class EmergencyRoom {
         return false;
     }
 
+
     /**
      * Retrieves and removes the highest priority waiting patient.
      *
@@ -57,6 +59,13 @@ public class EmergencyRoom {
         return waitingPatients.poll();
     }
 
+    public Duration getNextEventTime() {
+        if(waitingPatients.peek() != null) {
+            return waitingPatients.peek().getDischargeTime();
+        } else {
+            return null;
+        }
+    }
     /**
      * Checks if a treatment room is available.
      *

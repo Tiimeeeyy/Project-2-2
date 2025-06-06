@@ -1,8 +1,9 @@
-import simulation.PoissonSimulator;
-
 import java.io.IOException;
-import java.time.Duration;
+
 import org.mariuszgromada.math.mxparser.License;
+import simulation.DES;
+
+import java.time.Duration;
 
 /**
  * Entry point for running the Emergency Room Poisson simulation.
@@ -20,9 +21,12 @@ public class Main {
         License.iConfirmNonCommercialUse("KEN12");
 
         // Instantiate simulator using configuration values
-        PoissonSimulator simulation = new PoissonSimulator();
+        //PoissonSimulator simulation = new PoissonSimulator();
 
         // Run the simulation for 7 days
-        simulation.runSimulation(Duration.ofDays(7));
+        //simulation.runSimulation(Duration.ofDays(7));
+
+        DES simulation = new DES();
+        simulation.start(Duration.ofHours(4));
     }
 }
