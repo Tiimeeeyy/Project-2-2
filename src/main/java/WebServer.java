@@ -1,6 +1,6 @@
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import simulation.PoissonSimulator;
+import simulation.DES;
 import simulation.Patient;
 import spark.Spark;
 
@@ -14,7 +14,7 @@ import java.util.Map;
 public class WebServer {
     private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     
-    private static PoissonSimulator lastSimulation = null;
+    private static DES lastSimulation = null;
     
     public static void main(String[] args) throws IOException {
         Spark.port(8080);
@@ -60,12 +60,53 @@ public class WebServer {
             Map<String, Object> body = gson.fromJson(request.body(), new com.google.gson.reflect.TypeToken<Map<String, Object>>(){}.getType());
             
             int days = 7;
-            if (body != null && body.containsKey("days")) {
-                days = ((Double) body.get("days")).intValue();
+            Map<String, Object> hyperparameters = new HashMap<>();
+            String triageLevel = null;
+            String scenario = "regular";
+            String triageClassifier = "CTAS";
+            
+            if (body != null) {
+                if (body.containsKey("days")) {
+                    days = ((Double) body.get("days")).intValue();
+                }
+                if (body.containsKey("hyperparameters")) {
+                    Object hyperparamObj = body.get("hyperparameters");
+                    if (hyperparamObj instanceof Map) {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> hyperparamMap = (Map<String, Object>) hyperparamObj;
+                        hyperparameters = hyperparamMap;
+                    }
+                }
+                if (body.containsKey("triageLevel")) {
+                    triageLevel = (String) body.get("triageLevel");
+                }
+                if (body.containsKey("scenario")) {
+                    scenario = (String) body.get("scenario");
+                }
+                if (body.containsKey("triageClassifier")) {
+                    triageClassifier = (String) body.get("triageClassifier");
+                }
             }
             
-            PoissonSimulator simulation = new PoissonSimulator();
-            simulation.runSimulation(Duration.ofDays(days));
+            DES simulation = new DES();
+            
+            // Configure simulation based on parameters
+            if (!hyperparameters.isEmpty()) {
+                simulation.setHyperparameters(hyperparameters);
+            }
+            
+            if (triageLevel != null && !triageLevel.isEmpty()) {
+                try {
+                    Patient.TriageLevel triage = Patient.TriageLevel.valueOf(triageLevel.toUpperCase());
+                    simulation.setFocusTriageLevel(triage);
+                } catch (IllegalArgumentException e) {
+                    // Invalid triage level, ignore
+                }
+            }
+            
+            simulation.setScenarioType(scenario);
+            simulation.setTriageClassifier(triageClassifier);
+            simulation.start(Duration.ofDays(days));
             
             lastSimulation = simulation;
             
@@ -73,7 +114,7 @@ public class WebServer {
             Map<String, Object> result = new HashMap<>();
             result.put("success", true);
             result.put("patientsProcessed", simulation.getTreatedPatients().size());
-            result.put("patientsRejected", simulation.getRejectedPatients());
+            result.put("patientsRejected", simulation.getPatientsRejected());
             result.put("simulationTime", days);
             result.put("hasChartData", true);
             
@@ -124,9 +165,9 @@ public class WebServer {
             result.put("totalPatients", 
                 lastSimulation.getTreatedPatients().size() + 
                 lastSimulation.getTreatingPatients().size() + 
-                lastSimulation.getRejectedPatients());
+                lastSimulation.getPatientsRejected());
             result.put("patientsProcessed", lastSimulation.getTreatedPatients().size());
-            result.put("patientsRejected", lastSimulation.getRejectedPatients());
+            result.put("patientsRejected", lastSimulation.getPatientsRejected());
             
             return gson.toJson(result);
         });
@@ -160,6 +201,182 @@ public class WebServer {
             Map<String, Object> result = new HashMap<>();
             result.put("triageCounts", triageCounts);
             return gson.toJson(result);
+        });
+        
+        // New endpoints for configuration
+        Spark.get("/api/config/hyperparameters", (request, response) -> {
+            Map<String, Object> defaultParams = new HashMap<>();
+            defaultParams.put("interarrivalTime", 15.0);
+            defaultParams.put("treatmentCapacity", 15);
+            defaultParams.put("waitingCapacity", 30);
+            return gson.toJson(defaultParams);
+        });
+        
+        Spark.get("/api/config/triage-levels", (request, response) -> {
+            List<Map<String, String>> triageLevels = new ArrayList<>();
+            for (Patient.TriageLevel level : Patient.TriageLevel.values()) {
+                Map<String, String> levelInfo = new HashMap<>();
+                levelInfo.put("value", level.name());
+                levelInfo.put("label", level.getDescription());
+                triageLevels.add(levelInfo);
+            }
+            return gson.toJson(triageLevels);
+        });
+        
+        Spark.get("/api/config/triage-classifiers", (request, response) -> {
+            List<Map<String, String>> classifiers = new ArrayList<>();
+            
+            Map<String, String> ctas = new HashMap<>();
+            ctas.put("value", "CTAS");
+            ctas.put("label", "Canadian Triage and Acuity Scale (CTAS)");
+            ctas.put("description", "5-level triage system used in Canada");
+            classifiers.add(ctas);
+            
+            Map<String, String> esi = new HashMap<>();
+            esi.put("value", "ESI");
+            esi.put("label", "Emergency Severity Index (ESI)");
+            esi.put("description", "5-level triage system used in the United States");
+            classifiers.add(esi);
+            
+            Map<String, String> mts = new HashMap<>();
+            mts.put("value", "MTS");
+            mts.put("label", "Manchester Triage System (MTS)");
+            mts.put("description", "5-level triage system used in the United Kingdom");
+            classifiers.add(mts);
+            
+            return gson.toJson(classifiers);
+        });
+        
+        Spark.get("/api/config/scenarios", (request, response) -> {
+            List<Map<String, String>> scenarios = new ArrayList<>();
+            
+            Map<String, String> regular = new HashMap<>();
+            regular.put("value", "regular");
+            regular.put("label", "Regular Operation");
+            regular.put("description", "Normal ER operations with standard patient flow");
+            scenarios.add(regular);
+            
+            Map<String, String> emergency = new HashMap<>();
+            emergency.put("value", "emergency");
+            emergency.put("label", "Emergency Scenario");
+            emergency.put("description", "High-stress scenario with increased patient arrivals");
+            scenarios.add(emergency);
+            
+            return gson.toJson(scenarios);
+        });
+        
+        // Get utility statistics
+        Spark.get("/api/simulation/utilities", (request, response) -> {
+            if (lastSimulation == null) {
+                return gson.toJson(Map.of("error", "No simulation data available. Run a simulation first."));
+            }
+            
+            Map<String, Object> utilities = new HashMap<>();
+            
+            // Calculate room utilization
+            int[][] data = lastSimulation.getData();
+            if (data != null && data.length > 4) {
+                double avgUtilization = 0.0;
+                int totalRooms = 15; // Default from config
+                
+                for (int i = 0; i < data[3].length; i++) {
+                    int treatingPatients = data[3][i];
+                    avgUtilization += (double) treatingPatients / totalRooms;
+                }
+                avgUtilization = avgUtilization / data[3].length * 100;
+                
+                utilities.put("roomUtilization", Math.round(avgUtilization * 100.0) / 100.0);
+            }
+            
+            // Calculate throughput
+            int totalPatients = lastSimulation.getTreatedPatients().size() + lastSimulation.getPatientsRejected();
+            double throughput = totalPatients > 0 ? 
+                (double) lastSimulation.getTreatedPatients().size() / totalPatients * 100 : 0;
+            utilities.put("throughput", Math.round(throughput * 100.0) / 100.0);
+            
+            // Calculate rejection rate
+            double rejectionRate = totalPatients > 0 ? 
+                (double) lastSimulation.getPatientsRejected() / totalPatients * 100 : 0;
+            utilities.put("rejectionRate", Math.round(rejectionRate * 100.0) / 100.0);
+            
+            return gson.toJson(utilities);
+        });
+
+        // Get staff statistics
+        Spark.get("/api/simulation/staff-statistics", (request, response) -> {
+            if (lastSimulation == null) {
+                return gson.toJson(Map.of("error", "No simulation data available. Run a simulation first."));
+            }
+            
+            Map<String, Object> staffStats = new HashMap<>();
+            
+            // Mock staff statistics based on simulation data
+            int[][] data = lastSimulation.getData();
+            if (data != null && data.length > 4) {
+                // Calculate average utilization metrics
+                double avgTreatingPatients = 0.0;
+                double avgWaitingPatients = 0.0;
+                
+                for (int i = 0; i < data[3].length; i++) {
+                    avgTreatingPatients += data[3][i];
+                    avgWaitingPatients += data[2][i];
+                }
+                
+                if (data[3].length > 0) {
+                    avgTreatingPatients = avgTreatingPatients / data[3].length;
+                    avgWaitingPatients = avgWaitingPatients / data[2].length;
+                }
+                
+                // Mock physician statistics based on patient load
+                Map<String, Object> physicianStats = new HashMap<>();
+                int totalPhysicians = 8; // Mock value
+                physicianStats.put("totalStaff", totalPhysicians);
+                physicianStats.put("activeStaff", Math.max(1, (int)(avgTreatingPatients * 0.6))); // Assume 60% of treating patients need physicians
+                physicianStats.put("utilization", Math.min(100, Math.round(avgTreatingPatients / totalPhysicians * 100 * 100.0) / 100.0));
+                physicianStats.put("avgPatientsPerShift", Math.round(avgTreatingPatients / Math.max(1, totalPhysicians) * 100.0) / 100.0);
+                
+                // Mock nurse statistics
+                Map<String, Object> nurseStats = new HashMap<>();
+                int totalNurses = 15; // Mock value
+                nurseStats.put("totalStaff", totalNurses);
+                nurseStats.put("activeStaff", Math.max(1, (int)(avgTreatingPatients * 0.8))); // Assume 80% of treating patients need nurses
+                nurseStats.put("utilization", Math.min(100, Math.round(avgTreatingPatients / totalNurses * 100 * 100.0) / 100.0));
+                nurseStats.put("avgPatientsPerShift", Math.round(avgTreatingPatients / Math.max(1, totalNurses) * 100.0) / 100.0);
+                
+                // Mock resident statistics
+                Map<String, Object> residentStats = new HashMap<>();
+                int totalResidents = 4; // Mock value
+                residentStats.put("totalStaff", totalResidents);
+                residentStats.put("activeStaff", Math.max(1, (int)(avgTreatingPatients * 0.3))); // Assume 30% of treating patients involve residents
+                residentStats.put("utilization", Math.min(100, Math.round(avgTreatingPatients / totalResidents * 100 * 100.0) / 100.0));
+                residentStats.put("avgPatientsPerShift", Math.round(avgTreatingPatients / Math.max(1, totalResidents) * 100.0) / 100.0);
+                
+                // Mock admin staff statistics
+                Map<String, Object> adminStats = new HashMap<>();
+                int totalAdmin = 3; // Mock value
+                adminStats.put("totalStaff", totalAdmin);
+                adminStats.put("activeStaff", totalAdmin); // Admin staff typically always active
+                adminStats.put("utilization", Math.min(100, Math.round((avgWaitingPatients + avgTreatingPatients) / 20 * 100 * 100.0) / 100.0)); // Based on total patient load
+                adminStats.put("avgPatientsProcessed", Math.round((avgWaitingPatients + avgTreatingPatients) / Math.max(1, totalAdmin) * 100.0) / 100.0);
+                
+                staffStats.put("physicians", physicianStats);
+                staffStats.put("nurses", nurseStats);
+                staffStats.put("residents", residentStats);
+                staffStats.put("administration", adminStats);
+                
+                // Overall statistics
+                Map<String, Object> overallStats = new HashMap<>();
+                overallStats.put("totalStaff", totalPhysicians + totalNurses + totalResidents + totalAdmin);
+                overallStats.put("averageUtilization", Math.round(((Double)physicianStats.get("utilization") + 
+                    (Double)nurseStats.get("utilization") + 
+                    (Double)residentStats.get("utilization") + 
+                    (Double)adminStats.get("utilization")) / 4 * 100.0) / 100.0);
+                overallStats.put("patientToStaffRatio", Math.round(avgTreatingPatients / (totalPhysicians + totalNurses) * 100.0) / 100.0);
+                
+                staffStats.put("overall", overallStats);
+            }
+            
+            return gson.toJson(staffStats);
         });
     }
 }
