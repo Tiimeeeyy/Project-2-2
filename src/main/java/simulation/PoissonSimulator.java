@@ -197,14 +197,14 @@ public class PoissonSimulator {
         Iterator<Patient> iterator = treatingPatients.iterator();
         while (iterator.hasNext()) {
             Patient patient = iterator.next();
-            LocalDateTime expectedDischargeTime = patient.getTreatmentStartTime()
-                .plusMinutes((long) getTreatmentTimeForPatient(patient));
-            if (!currentTime.isBefore(expectedDischargeTime)) {
-                patient.setDischargeTime(currentTime);
-                treatedPatients.add(patient);
-                iterator.remove();
-                er.freeTreatmentRoom();
-            }
+            //LocalDateTime expectedDischargeTime = patient.getTreatmentStartTime()
+                //.plusMinutes((long) getTreatmentTimeForPatient(patient));
+            //if (!currentTime.isBefore(expectedDischargeTime)) {
+                //patient.setDischargeTime(currentTime);
+                //treatedPatients.add(patient);
+                //iterator.remove();
+                //er.freeTreatmentRoom();
+            //}
         }
     }
 
@@ -215,7 +215,7 @@ public class PoissonSimulator {
     private void moveWaitingToTreatment() {
         while (er.hasTreatmentRoomAvailable() && !er.getWaitingPatients().isEmpty()) {
             Patient patient = er.getNextPatient();
-            patient.setTreatmentStartTime(currentTime);
+            //patient.setTreatmentStartTime(currentTime);
             treatingPatients.add(patient);
             er.occupyTreatmentRoom();
         }
@@ -310,7 +310,7 @@ public class PoissonSimulator {
                 }
             }
         }
-        return new Patient(id, name, age, triageLevel, currentTime);
+        return new Patient(id, name, age, triageLevel, Duration.ZERO, Duration.ZERO);//zeros are here because Patient has been changed
     }
 
     /**
@@ -357,7 +357,7 @@ public class PoissonSimulator {
         long totalWaitingMinutes = 0;
         long totalTreatmentMinutes = 0;
         for (Patient patient : treatedPatients) {
-            Duration waitingTime = Duration.between(
+            /*Duration waitingTime = Duration.between(
                 patient.getArrivalTime(),
                 patient.getTreatmentStartTime()
             );
@@ -366,7 +366,7 @@ public class PoissonSimulator {
                 patient.getDischargeTime()
             );
             totalWaitingMinutes += waitingTime.toMinutes();
-            totalTreatmentMinutes += treatmentTime.toMinutes();
+            totalTreatmentMinutes += treatmentTime.toMinutes();*/
         }
 
         if (!treatedPatients.isEmpty()) {
