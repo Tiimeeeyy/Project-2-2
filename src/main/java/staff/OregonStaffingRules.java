@@ -1,5 +1,8 @@
 package staff;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * Utility class to provide helper methods related to Oregon's specific
  * hospital staffing laws and common practices, with a focus on the Emergency Department (ED).
@@ -110,5 +113,23 @@ public class OregonStaffingRules {
         }
         // Add other admin roles like registration clerks if needed.
         return 0;
+    }
+
+    public static Map<Role,Integer> getStaffRequirements(int traumaPatients, int nonTraumaPatients, double CNARatio, double LPNRatio){
+        int patients = traumaPatients+nonTraumaPatients;
+        return new HashMap<>(){{
+            // If additional rules are added, change 0 values to the relevant calculator
+            put(Role.REGISTERED_NURSE, getMinRNsForED(traumaPatients,nonTraumaPatients));
+            put(Role.LICENSED_PRACTICAL_NURSE, getPolicyBasedLPNsForED(patients, LPNRatio));
+            put(Role.CERTIFIED_NURSING_ASSISTANT, getPolicyBasedCNAsOrTechsForED(patients, CNARatio));
+            put(Role.NURSE_PRACTITIONER, 0);
+            put(Role.CLINICAL_NURSE_SPECIALIST, 0);
+            put(Role.CERTIFIED_REGISTERED_NURSE_ANESTHETIST, 0);
+            put(Role.RESIDENT_PHYSICIAN, getPolicyBasedPhysiciansForED(patients,Role.RESIDENT_PHYSICIAN));
+            put(Role.ATTENDING_PHYSICIAN, getPolicyBasedPhysiciansForED(patients,Role.ATTENDING_PHYSICIAN));
+            put(Role.SURGEON, 0);
+            put(Role.CARDIOLOGIST,0);
+            put(Role.ADMIN_CLERK, getPolicyBasedAdminStaffForED(patients,Role.ADMIN_CLERK));
+        }};
     }
 }

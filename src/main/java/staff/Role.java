@@ -38,4 +38,9 @@ public enum Role {
                 this == CERTIFIED_REGISTERED_NURSE_ANESTHETIST;
     }
 
+    public static boolean isNurseRole(Role roleToCheck) {
+        // This helper should ideally be part of the Role enum or a utility class
+        return roleToCheck == Role.REGISTERED_NURSE || roleToCheck == Role.LICENSED_PRACTICAL_NURSE || roleToCheck == Role.CERTIFIED_NURSING_ASSISTANT || roleToCheck == Role.NURSE_PRACTITIONER || roleToCheck == Role.CLINICAL_NURSE_SPECIALIST || roleToCheck == Role.CERTIFIED_REGISTERED_NURSE_ANESTHETIST;
+    }
+
 }
