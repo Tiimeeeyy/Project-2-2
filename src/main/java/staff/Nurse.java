@@ -27,7 +27,7 @@ public class Nurse implements StaffMemberInterface {
     private final HashMap<DayOfWeek, Shift> schedule;
 
     public Nurse(UUID id, String name, Role nurseRole, double regularHourlyWage, double overtimeMultiplier) {
-        if (nurseRole == null || !isNurseRole(nurseRole)) {
+        if (nurseRole == null || !Role.isNurseRole(nurseRole)) {
             throw new IllegalArgumentException("The provided role '" + nurseRole + "' is not a valid nurse role for a Nurse object.");
         }
         this.id = id;
@@ -40,11 +40,6 @@ public class Nurse implements StaffMemberInterface {
 
     public Nurse(String name, Role nurseRole, double regularHourlyWage, double overtimeMultiplier) {
         this(UUID.randomUUID(), name, nurseRole, regularHourlyWage, overtimeMultiplier);
-    }
-
-    private boolean isNurseRole(Role roleToCheck) {
-        // This helper should ideally be part of the Role enum or a utility class
-        return roleToCheck == Role.REGISTERED_NURSE || roleToCheck == Role.LICENSED_PRACTICAL_NURSE || roleToCheck == Role.CERTIFIED_NURSING_ASSISTANT || roleToCheck == Role.NURSE_PRACTITIONER || roleToCheck == Role.CLINICAL_NURSE_SPECIALIST || roleToCheck == Role.CERTIFIED_REGISTERED_NURSE_ANESTHETIST;
     }
 
     // Explicit implementation for getSchedule to return a copy, as @Getter would return the direct reference.

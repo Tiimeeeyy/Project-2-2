@@ -1,46 +1,81 @@
 {
   "populationSize": 150000,
   "ERName": "MUMC",
-  "ERCapacity": 2,
-  "ERTreatmentRooms": 1,
-  "patientServices": [
-    {
-      "name": "ambulance",
-      "triageLevel": "RED",
-      "chance": 0.02,
-      "timeMin": 30,
-      "timeMax": 60
-    },
-    {
-      "name": "surgery",
-      "triageLevel": "RED",
-      "chance": 0.08,
-      "timeMin": 120,
-      "timeMax": 300
-    },
-    {
-      "name": "stitches",
-      "triageLevel": "YELLOW",
-      "chance": 0.2,
-      "timeMin": 60,
-      "timeMax": 90
-    },
-    {
-      "name": "painkillers",
-      "triageLevel": "GREEN",
-      "chance": 0.4,
-      "timeMin": 15,
-      "timeMax": 30
-    },
-    {
-      "name": "nothing",
-      "triageLevel": "BLUE",
-      "chance": 0.3,
-      "timeMin": 0.15,
-      "timeMax": 0.30
-    }
-  ],
+  "ERCapacity": 30,
+  "ERTreatmentRooms": 15,
 
+  "CNARatio": 1,
+  "LPNRatio": 1,
+
+  "maxHoursPerDay": 12,
+  "maxRegularHoursPerWeek": 48,
+  "maxTotalHoursPerWeek": 48,
+  "overtimeMultiplier": 1.5,
+
+  "staffCounts": {
+    "REGISTERED_NURSE":  20,
+    "LICENSED_PRACTICAL_NURSE":  2,
+    "CERTIFIED_NURSING_ASSISTANT":  3,
+    "NURSE_PRACTITIONER":  0,
+    "CLINICAL_NURSE_SPECIALIST":  0,
+    "CERTIFIED_REGISTERED_NURSE_ANESTHETIST":  0,
+    "RESIDENT_PHYSICIAN":  4,
+    "ATTENDING_PHYSICIAN":  5,
+    "SURGEON":  0,
+    "CARDIOLOGIST":  0,
+    "ADMIN_CLERK":  8
+  },
+
+  "estTraumaPatientsDay": 3,
+  "estTraumaPatientsEvening": 1,
+  "estTraumaPatientsNight": 0,
+  "estNonTraumaPatientsDay": 10,
+  "estNonTraumaPatientsEvening": 5,
+  "estNonTraumaPatientsNight": 2,
+
+  "hourlyWages": {
+    "REGISTERED_NURSE":  40,
+    "LICENSED_PRACTICAL_NURSE":  25,
+    "CERTIFIED_NURSING_ASSISTANT":  20,
+    "NURSE_PRACTITIONER":  0,
+    "CLINICAL_NURSE_SPECIALIST":  0,
+    "CERTIFIED_REGISTERED_NURSE_ANESTHETIST":  0,
+    "RESIDENT_PHYSICIAN":  80,
+    "ATTENDING_PHYSICIAN":  100,
+    "SURGEON":  0,
+    "CARDIOLOGIST":  0,
+    "ADMIN_CLERK":  20
+  },
+
+  "triageNurseRequirements": {
+    "BLUE": 1,
+    "GREEN": 1,
+    "YELLOW": 1,
+    "ORANGE": 2,
+    "RED": 3
+  },
+  "triagePhysicianRequirements": {
+    "BLUE": 0,
+    "GREEN": 0,
+    "YELLOW": 0,
+    "ORANGE": 1,
+    "RED": 2
+  },
+  "triageRPRequirements": {
+    "BLUE": 0,
+    "GREEN": 0,
+    "YELLOW": 0,
+    "ORANGE": 1,
+    "RED": 1
+  },
+
+  "avgTreatmentTimesMins": {
+    "BLUE": 10.0,
+    "GREEN": 30.0,
+    "YELLOW": 60.0,
+    "ORANGE": 90.0,
+    "RED": 120.0
+  },
   "patientArrivalFunctions": {
     "constant": "1",
     "constant_2x": "2",
