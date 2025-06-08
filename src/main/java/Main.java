@@ -27,6 +27,6 @@ public class Main {
         //simulation.runSimulation(Duration.ofDays(7));
 
         DES simulation = new DES();
-        simulation.start(Duration.ofHours(4));
+        simulation.start(Duration.ofHours(672));
     }
 }
