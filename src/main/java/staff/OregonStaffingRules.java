@@ -115,6 +115,14 @@ public class OregonStaffingRules {
         return 0;
     }
 
+    /**
+     * Gets a full map of how many staff members of each role is needed based on parameters.
+     * @param traumaPatients number of trauma patients (high-risk) expected to be in the ER at a given time
+     * @param nonTraumaPatients number of non-trauma patients (lower-risk) expected to be in the ER at a given time
+     * @param CNARatio the desired minimum ratio of Certified Nursing Assistants to patients
+     * @param LPNRatio the desired minimum ratio of Licensed Practical Nurses to patients
+     * @return a Map containing each role and its required staff count
+     */
     public static Map<Role,Integer> getStaffRequirements(int traumaPatients, int nonTraumaPatients, double CNARatio, double LPNRatio){
         int patients = traumaPatients+nonTraumaPatients;
         return new HashMap<>(){{

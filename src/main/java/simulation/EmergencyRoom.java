@@ -90,13 +90,6 @@ public class EmergencyRoom {
         return waitingPatients.poll();
     }
 
-    public Duration getNextEventTime() {
-        if(waitingPatients.peek() != null) {
-            return waitingPatients.peek().getDischargeTime();
-        } else {
-            return null;
-        }
-    }
     /**
      * Checks if a treatment room is available.
      *
@@ -124,9 +117,20 @@ public class EmergencyRoom {
         }
     }
 
+    /**
+     * Simulates taking up staff resources
+     * @param type the type of staff (nurse, physician, resident) that's being used
+     * @param amount the number of staff members of the given type being used
+     */
     public void occupyStaff(String type, double amount){
         availableStaff.put(type,availableStaff.get(type)-amount);
     }
+
+    /**
+     * Simulates freeing up staff resources
+     * @param type the type of staff (nurse, physician, resident) that's being freed
+     * @param amount the number of staff members of the given type being freed
+     */
     public void freeStaff(String type, double amount){
         availableStaff.put(type,availableStaff.get(type)+amount);
     }

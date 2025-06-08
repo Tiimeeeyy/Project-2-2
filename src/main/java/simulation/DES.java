@@ -18,7 +18,9 @@ import simulation.triage_classifiers.TriageClassifier;
 import lombok.Getter;
 import staff.*;
 
-//TODO: Add javadoc
+/**
+ * Contains the Discrete Event Simulation for the ER and its associated data collection for the GUI.
+ */
 @Getter
 public class DES {
     private final Config config;
@@ -90,6 +92,11 @@ public class DES {
         this.scenarioType = "regular"; // Default scenario
         this.triageClassifier = new CTAS(); // Default triage classifier
     }
+
+    /**
+     * Starts the simulation, starting at midnight. All parameters except Duration are from the config.json file.
+     * @param duration the duration of the simulation.
+     */
     public void start(Duration duration){
         //schedule staff
         System.out.println("Scheduling staff...");
@@ -128,6 +135,11 @@ public class DES {
         System.out.println("Summary ("+duration.toString().substring(2)+" duration):\n"+eventsProcessed+" events processed\n"+numArrivals+" patient arrivals\n"
                 +patientsTreated+" patients treated\n"+patientsRejected+" patients rejected");
     }
+
+    /**
+     * Generates an arrival event prior to the start of the simulation. Interarrival times follow a Poisson process,
+     * drawing arrivals from an exponential distribution with the interarrivalTime variable as parameter.
+     */
     private void createArrival(){
         Duration lastEventTime;
         if (eventList.isEmpty()){
@@ -140,6 +152,11 @@ public class DES {
         Patient p = generateRandomPatient();
         eventList.add(new Event(Duration.ofMinutes((long)distribution.sample()).plus(lastEventTime), "arrival", p));
     }
+
+    /**
+     * Ticks over to the next event in the simulation and calls the relevant function to process it.
+     * @param simDuration the total duration of the simulation
+     */
     private void nextEvent(Duration simDuration){
         eventList.sort(null);
         Event e = eventList.removeFirst();
@@ -148,7 +165,7 @@ public class DES {
             deltaTime = e.getTime();
             switch (e.getType()) {
                 case "arrival":
-                    arrival(deltaTime, e.getPatient());
+                    arrival(e.getPatient());
                     break;
                 case "release":
                     release(e.getPatient());
@@ -157,7 +174,11 @@ public class DES {
         }
     }
 
-    private void arrival(Duration arrivalTime, Patient p){
+    /**
+     * Handles a single arrival event for a given patient.
+     * @param p the patient that arrives
+     */
+    private void arrival(Patient p){
         hourlyArrivals++;
         if (DETAILED_LOGGING) {
             System.out.println("EVENT " + eventsProcessed + " | TIME " + deltaTime.toString().substring(2) + " | Patient " + p.getName() + " arrives needing " + p.getTriageLevel().getDescription().toLowerCase() + " care.");
@@ -178,6 +199,11 @@ public class DES {
         }
     }
 
+    /**
+     * Checks if it's possible to treat a given patient based on their triage level and the ER's availability.
+     * @param p the patient to check
+     * @return true if there are enough resources to treat the patient, false otherwise
+     */
     private boolean canTreatPatient(Patient p){
         if(er.hasTreatmentRoomAvailable()){
             String triageLevel = p.getTriageLevel().name();
@@ -193,6 +219,12 @@ public class DES {
         }
         return false;
     }
+
+    /**
+     * Simulates treating a patient. Assumes that canTreatPatient has already been evaluated as true before call. This
+     * creates a "release" event for the end of the treatment duration.
+     * @param p the patient to treat
+     */
     private void treat(Patient p){
         if(DETAILED_LOGGING){
             System.out.println(new String(new char[("EVENT "+eventsProcessed+" | TIME "+deltaTime.toString().substring(2)).length()]).replace('\0',' ')+" | Patient "+p.getName()+" begins treatment.");
@@ -205,6 +237,11 @@ public class DES {
         eventList.add(new Event(deltaTime.plus(p.getTreatmentTime()),"release", p));
     }
 
+    /**
+     * Discharges a patient from the ER. If there are other patients that can be treated, sends the next highest
+     * priority patient to treatment
+     * @param p the patient being discharged
+     */
     private void release(Patient p){
         patientsTreated++;
         if(DETAILED_LOGGING){
@@ -217,10 +254,19 @@ public class DES {
         treatingPatients.remove(p);
         treatedPatients.add(p);
         if(!er.getWaitingPatients().isEmpty()){
-            treat(er.getNextPatient());
+            if(canTreatPatient(er.getWaitingPatients().peek())) {
+                treat(er.getNextPatient());
+            }
         }
     }
 
+    /**
+     * Retrieves the optimized schedule for a supercategory of staff roles (nurse, attending, or resident) using the LP
+     * system with the parameters given in config.json.
+     * @param duration the duration of the simulation
+     * @param staffType the type of staff ("nurse", "physician", or "resident") to get a schedule for
+     * @return an OptimizedScheduleOutput object containing the schedule requested
+     */
     private OptimizedScheduleOutput getSchedule(Duration duration,String staffType){
         OptimizationInput input = OptimizationInput.builder()
                 .staffMembers(genStaff())
@@ -244,6 +290,10 @@ public class DES {
         return null;
     }
 
+    /**
+     * Creates a list of staff members based on the role counts described in config.json's staffCounts variable.
+     * @return the full list of all staff members.
+     */
     private List<StaffMemberInterface> genStaff(){
         List<StaffMemberInterface> staff = new ArrayList<>();
         for(Map.Entry<String,Integer> role:config.getStaffCounts().entrySet()){
@@ -264,6 +314,12 @@ public class DES {
         return staff;
     }
 
+    /**
+     * Creates the set of demands that the LP is bound by when considering ER needs and legal compliance. These needs
+     * are based on the OregonStaffingRules class's interpretation of the ER described in config.json.
+     * @param duration the duration of the simulation
+     * @return a list of Demand objects describing the needs of the ER.
+     */
     private List<Demand> genDemands(Duration duration){
         List<Demand> demands = new ArrayList<>();
         Map<Role,Integer> dayRequirements = OregonStaffingRules.getStaffRequirements(
@@ -298,6 +354,11 @@ public class DES {
         }
         return demands;
     }
+
+    /**
+     * Records data from the last hour for GUI display.
+     * @param hour the hour (as an integer count from the beginning of the simulation) to record data for
+     */
     private void recordHourlyData(int hour) {
         if (hour < data[0].length) {
             data[0][hour] = hour;
@@ -341,6 +402,10 @@ public class DES {
         }
     }
 
+    /**
+     * Generates a random patient according to a set of probabilities regarding diagnoses with varying triage levels.
+     * @return a random Patient object
+     */
     private Patient generateRandomPatient() {
         UUID id = UUID.randomUUID();
         String name = "Patient" + Math.abs(id.hashCode() % 10000);
@@ -366,6 +431,10 @@ public class DES {
         return new Patient(id, name, age, triageLevel, deltaTime, treatmentTime);
     }
 
+    /**
+     * Generates a condition for a patient to present with, which can be later turned into a triage level.
+     * @return
+     */
     private int generateDiagnosis() {
         double[] diagnosisProbs = {
                 3.72908417e-02, 3.45021445e-02, 6.44438692e-04, 1.42655116e-01,
