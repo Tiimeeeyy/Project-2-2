@@ -1,4 +1,4 @@
-package scheduling; // Or your chosen package
+package scheduling;
 
 import staff.*;
 

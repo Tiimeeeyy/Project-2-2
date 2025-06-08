@@ -42,9 +42,28 @@ public final class Config {
     private int ERTreatmentRooms;
 
     private int patientMaxAge;
+    private int maxHoursPerDay;
+    private int maxRegularHoursPerWeek;
+    private int maxTotalHoursPerWeek;
+    private double overtimeMultiplier;
     private String defaultArrivalFunction;
-    private PatientService[] patientServices;
     private Map<String, String> patientArrivalFunctions;
+    private Map<String, Integer> staffCounts;
+    private Map<String, Double> triageNurseRequirements;
+    private Map<String, Double> triageRPRequirements;
+    private Map<String, Double> triagePhysicianRequirements;
+    private Map<String, Double> hourlyWages;
+    private Map<String, Double> avgTreatmentTimesMins;
+    @JsonProperty("LPNRatio")
+    private double LPNRatio;
+    @JsonProperty("CNARatio")
+    private double CNARatio;
+    private int estTraumaPatientsDay;
+    private int estTraumaPatientsEvening;
+    private int estTraumaPatientsNight;
+    private int estNonTraumaPatientsDay;
+    private int estNonTraumaPatientsEvening;
+    private int estNonTraumaPatientsNight;
     private boolean visualize;
 
     // Private constructor to enforce singleton pattern

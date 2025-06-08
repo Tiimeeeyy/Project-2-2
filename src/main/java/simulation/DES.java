@@ -1,18 +1,23 @@
 package simulation;
 
 import java.io.IOException;
+import java.time.DateTimeException;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.*;
 
 import org.apache.commons.math3.distribution.ExponentialDistribution;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.mariuszgromada.math.mxparser.Argument;
 import org.mariuszgromada.math.mxparser.Expression;
+import scheduling.*;
 import simulation.triage_classifiers.CTAS;
 import simulation.triage_classifiers.ESI;
 import simulation.triage_classifiers.MTS;
 import simulation.triage_classifiers.TriageClassifier;
 import lombok.Getter;
+import staff.*;
+
 //TODO: Add javadoc
 @Getter
 public class DES {
@@ -27,9 +32,9 @@ public class DES {
     private double interarrivalTimeMins;
     private final boolean DETAILED_LOGGING = false; // Changed to false for web interface
     private int eventsProcessed = 0;
-    private Duration simDuration;
     private int patientsTreated;
     private int patientsRejected;
+    private LocalDateTime startTime;
     
     // Additional fields for data collection and configuration - GUI RELATED
     private int[][] data;
@@ -39,6 +44,10 @@ public class DES {
     private Patient.TriageLevel focusTriageLevel;
     private String scenarioType;
     private TriageClassifier triageClassifier;
+    private OptimizedScheduleOutput nurseSchedule;
+    private OptimizedScheduleOutput physicianSchedule;
+    private OptimizedScheduleOutput residentSchedule;
+    private int hourlyArrivals;
 
     public DES() throws IOException {
         this.patientsRejected = 0;
@@ -66,11 +75,11 @@ public class DES {
         );
 
         this.avgTreatmentTimes = Map.of(
-                Patient.TriageLevel.RED, 120.0,
-                Patient.TriageLevel.ORANGE, 90.0,
-                Patient.TriageLevel.YELLOW, 60.0,
-                Patient.TriageLevel.GREEN, 30.0,
-                Patient.TriageLevel.BLUE, 10.0
+                Patient.TriageLevel.RED, config.getAvgTreatmentTimesMins().get("RED"),
+                Patient.TriageLevel.ORANGE,  config.getAvgTreatmentTimesMins().get("ORANGE"),
+                Patient.TriageLevel.YELLOW,  config.getAvgTreatmentTimesMins().get("YELLOW"),
+                Patient.TriageLevel.GREEN,  config.getAvgTreatmentTimesMins().get("GREEN"),
+                Patient.TriageLevel.BLUE,  config.getAvgTreatmentTimesMins().get("BLUE")
         );
         
         // Initialize new fields - FOR GUI
@@ -82,13 +91,19 @@ public class DES {
         this.triageClassifier = new CTAS(); // Default triage classifier
     }
     public void start(Duration duration){
-        //create arrivals for the entire duration
-        simDuration = duration;
-        
-        // Initialize data collection arrays - wouldnt compile without this
+        //schedule staff
+        System.out.println("Scheduling staff...");
+        nurseSchedule = getSchedule(duration, "nurse");
+        physicianSchedule = getSchedule(duration, "physician");
+        residentSchedule = getSchedule(duration, "resident");
+
+        this.hourlyArrivals = 0;
+        // Initialize data collection arrays - wouldn't compile without this
         int hours = (int) duration.toHours();
         this.data = new int[5][hours];
 
+
+        //create arrivals for the entire duration
         while(eventList.isEmpty() || eventList.getLast().getTime().compareTo(duration)<=0){
             createArrival();
         }
@@ -100,7 +115,7 @@ public class DES {
         // Record data during simulation
         int currentHour = 0;
         while(!eventList.isEmpty()&&deltaTime.compareTo(duration)<0){
-            nextEvent();
+            nextEvent(duration);
             
             // Record hourly data
             int newHour = (int) deltaTime.toHours();
@@ -120,12 +135,12 @@ public class DES {
         } else {
             lastEventTime = eventList.getLast().getTime();
         }
-        t.setArgumentValue((int)Math.floor(lastEventTime.toHours()));
+        t.setArgumentValue(+(int)Math.floor(lastEventTime.toHours()));
         ExponentialDistribution distribution = new ExponentialDistribution(interarrivalTimeMins/arrivalExpression.calculate());
         Patient p = generateRandomPatient();
         eventList.add(new Event(Duration.ofMinutes((long)distribution.sample()).plus(lastEventTime), "arrival", p));
     }
-    private void nextEvent(){
+    private void nextEvent(Duration simDuration){
         eventList.sort(null);
         Event e = eventList.removeFirst();
         if(e.getTime().compareTo(simDuration)<0) {
@@ -143,11 +158,12 @@ public class DES {
     }
 
     private void arrival(Duration arrivalTime, Patient p){
+        hourlyArrivals++;
         if (DETAILED_LOGGING) {
             System.out.println("EVENT " + eventsProcessed + " | TIME " + deltaTime.toString().substring(2) + " | Patient " + p.getName() + " arrives needing " + p.getTriageLevel().getDescription().toLowerCase() + " care.");
         }
         if(er.addPatient(p)) {
-            if (er.hasTreatmentRoomAvailable()) {
+            if (canTreatPatient(p)) {
                 treat(er.getNextPatient());
             } else {
                 if (DETAILED_LOGGING) {
@@ -162,10 +178,28 @@ public class DES {
         }
     }
 
+    private boolean canTreatPatient(Patient p){
+        if(er.hasTreatmentRoomAvailable()){
+            String triageLevel = p.getTriageLevel().name();
+            double reqNurses = config.getTriageNurseRequirements().get(triageLevel);
+            double reqPhysicians = config.getTriagePhysicianRequirements().get(triageLevel);
+            double reqRPs = config.getTriageRPRequirements().get(triageLevel);
+            //currently treats nurse roles equally
+            Map<String,Double> availableStaff = er.getAvailableStaff();
+            if((reqNurses<=availableStaff.get("Nurses"))
+                    &&(reqPhysicians<=availableStaff.get("Physicians"))
+                    &&(reqRPs<=availableStaff.get("Residents")))
+            {return true;}
+        }
+        return false;
+    }
     private void treat(Patient p){
         if(DETAILED_LOGGING){
             System.out.println(new String(new char[("EVENT "+eventsProcessed+" | TIME "+deltaTime.toString().substring(2)).length()]).replace('\0',' ')+" | Patient "+p.getName()+" begins treatment.");
         }
+        er.occupyStaff("Nurses",config.getTriageNurseRequirements().get(p.getTriageLevel().name()));
+        er.occupyStaff("Physicians",config.getTriagePhysicianRequirements().get(p.getTriageLevel().name()));
+        er.occupyStaff("Residents",config.getTriageRPRequirements().get(p.getTriageLevel().name()));
         er.occupyTreatmentRoom();
         treatingPatients.add(p);
         eventList.add(new Event(deltaTime.plus(p.getTreatmentTime()),"release", p));
@@ -176,6 +210,9 @@ public class DES {
         if(DETAILED_LOGGING){
             System.out.println("EVENT "+eventsProcessed+" | TIME "+deltaTime.toString().substring(2)+" | Patient "+p.getName()+" is discharged from the ER.");
         }
+        er.freeStaff("Nurses",config.getTriageNurseRequirements().get(p.getTriageLevel().name()));
+        er.freeStaff("Physicians",config.getTriagePhysicianRequirements().get(p.getTriageLevel().name()));
+        er.freeStaff("Residents",config.getTriageRPRequirements().get(p.getTriageLevel().name()));
         er.freeTreatmentRoom();
         treatingPatients.remove(p);
         treatedPatients.add(p);
@@ -183,16 +220,94 @@ public class DES {
             treat(er.getNextPatient());
         }
     }
-    
+
+    private OptimizedScheduleOutput getSchedule(Duration duration,String staffType){
+        OptimizationInput input = OptimizationInput.builder()
+                .staffMembers(genStaff())
+                .demands(genDemands(duration))
+                .lpShifts(new HashMap<>() {{
+                    put("d8", new ShiftDefinition("d8", Shift.DAY_8H));
+                    put("e8", new ShiftDefinition("e8", Shift.EVENING_8H));
+                    put("n8", new ShiftDefinition("n8", Shift.NIGHT_8H));
+                }})
+                .maxHoursPerDay(config.getMaxHoursPerDay())
+                .maxRegularHoursPerWeek(config.getMaxRegularHoursPerWeek())
+                .maxTotalHoursPerWeek(config.getMaxTotalHoursPerWeek())
+                .numDaysInPeriod((int)Math.ceil((double)duration.toHours()/24))
+                .numWeeksInPeriod((int)Math.ceil((double)duration.toHours()/168))
+                .build();
+        switch (staffType){
+            case "nurse" -> {return (new NurseScheduler()).optimizeNurseSchedule(input);}
+            case "physician" -> {return (new PhysicianScheduler()).optimizePhysicianSchedule(input);}
+            case "resident" -> {return (new ResidentPhysicianScheduler()).optimizeResidentSchedule(input);}
+        }
+        return null;
+    }
+
+    private List<StaffMemberInterface> genStaff(){
+        List<StaffMemberInterface> staff = new ArrayList<>();
+        for(Map.Entry<String,Integer> role:config.getStaffCounts().entrySet()){
+            for(int i = 0; i<role.getValue();i++) {
+                if (Role.isNurseRole(Role.valueOf(role.getKey()))) {
+                    UUID id = UUID.randomUUID();
+                    staff.add(new Nurse(
+                            id,
+                            role.getKey()+id.toString(),
+                            Role.valueOf(role.getKey()),
+                            config.getHourlyWages().get(role.getKey()),
+                            config.getOvertimeMultiplier()
+                            )
+                    );
+                }
+            }
+        }
+        return staff;
+    }
+
+    private List<Demand> genDemands(Duration duration){
+        List<Demand> demands = new ArrayList<>();
+        Map<Role,Integer> dayRequirements = OregonStaffingRules.getStaffRequirements(
+                config.getEstTraumaPatientsDay(),
+                config.getEstNonTraumaPatientsDay(),
+                config.getCNARatio(),
+                config.getLPNRatio());
+        Map<Role,Integer> eveningRequirements = OregonStaffingRules.getStaffRequirements(
+                config.getEstTraumaPatientsEvening(),
+                config.getEstNonTraumaPatientsEvening(),
+                config.getCNARatio(),
+                config.getLPNRatio());
+        Map<Role,Integer> nightRequirements = OregonStaffingRules.getStaffRequirements(
+                config.getEstTraumaPatientsNight(),
+                config.getEstNonTraumaPatientsNight(),
+                config.getCNARatio(),
+                config.getLPNRatio());
+        int days = (int)Math.ceil((double)duration.toHours()/24);
+        for (int dayIndex = 0; dayIndex < days; dayIndex++) {
+            for (Map.Entry<Role,Integer> entry: dayRequirements.entrySet()
+                 ) {
+                demands.add(new Demand(entry.getKey(),dayIndex,"d8",entry.getValue()));
+            }
+            for (Map.Entry<Role,Integer> entry: eveningRequirements.entrySet()
+            ) {
+                demands.add(new Demand(entry.getKey(),dayIndex,"e8",entry.getValue()));
+            }
+            for (Map.Entry<Role,Integer> entry: nightRequirements.entrySet()
+            ) {
+                demands.add(new Demand(entry.getKey(),dayIndex,"n8",entry.getValue()));
+            }
+        }
+        return demands;
+    }
     private void recordHourlyData(int hour) {
         if (hour < data[0].length) {
             data[0][hour] = hour;
             // ts not poisson so 0 lmk if it breaks smth - emre
-            data[1][hour] = 0; 
+            data[1][hour] = hourlyArrivals;
             data[2][hour] = er.getWaitingPatients().size();
             data[3][hour] = treatingPatients.size();
             data[4][hour] = er.getTreatmentRooms() - er.getOccupiedTreatmentRooms();
         }
+        hourlyArrivals = 0;
     }
     
     // Configuration methods for web interface
