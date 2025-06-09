@@ -13,7 +13,7 @@
   "overtimeMultiplier": 1.5,
 
   "staffCounts": {
-    "REGISTERED_NURSE":  20,
+    "REGISTERED_NURSE":  6000,
     "LICENSED_PRACTICAL_NURSE":  2,
     "CERTIFIED_NURSING_ASSISTANT":  3,
     "NURSE_PRACTITIONER":  0,

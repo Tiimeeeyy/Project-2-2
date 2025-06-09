@@ -317,6 +317,28 @@ public class DES {
                             )
                     );
                 }
+                if (Role.isPhysicianRole(Role.valueOf(role.getKey()))) {
+                    UUID id = UUID.randomUUID();
+                    staff.add(new Physician(
+                                    id,
+                                    role.getKey()+id.toString(),
+                                    Role.valueOf(role.getKey()),
+                                    config.getHourlyWages().get(role.getKey()),
+                                    config.getOvertimeMultiplier()
+                            )
+                    );
+                }
+                if (Role.isResidentRole(Role.valueOf(role.getKey()))) {
+                    UUID id = UUID.randomUUID();
+                    staff.add(new ResidentPhysician(
+                                    id,
+                                    role.getKey()+id.toString(),
+                                    Role.valueOf(role.getKey()),
+                                    config.getHourlyWages().get(role.getKey()),
+                                    config.getOvertimeMultiplier()
+                            )
+                    );
+                }
             }
         }
         return staff;
@@ -464,6 +486,10 @@ public class DES {
         return diagnosisProbs.length;
     }
 
+    /**
+     * Adds the current contents of the data array to the output string to be written to CSV later
+     * @param hour the current hour of the simulation
+     */
     private void logToCSV(int hour){
         for (int[] datum:data
              ) {
@@ -471,6 +497,11 @@ public class DES {
         }
         stringOutputData=stringOutputData.substring(0,stringOutputData.length()-1)+"\n";
     }
+
+    /**
+     * Writes the contents of the output string to a file.
+     * @throws FileNotFoundException if the
+     */
     private void writeToCSV() throws FileNotFoundException {
         String filename = "log_"+LocalDateTime.now().format(DateTimeFormatter.ofPattern("ddMMHHmmss"))+".csv";
         File output = new File(filename);
