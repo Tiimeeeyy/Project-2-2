@@ -19,9 +19,9 @@ public class ShiftDefinition {
      * Constructs a new ShiftDefinition.
      *
      * @param lpShiftId     The identifier for this shift as used in the Linear Program (e.g., "Ds").
-     *                      This corresponds to 's' in ShiftLength_s or X_nsd.
+     * This corresponds to 's' in ShiftLength_s or X_nsd.
      * @param concreteShift The concrete {@link Shift} enum value this LP shift maps to.
-     *                      The length and off-shift status will be derived from this.
+     * The length and off-shift status will be derived from this.
      */
     public ShiftDefinition(String lpShiftId, Shift concreteShift) {
         if (lpShiftId == null || lpShiftId.trim().isEmpty()) {
@@ -61,6 +61,28 @@ public class ShiftDefinition {
     public double getStartTimeInHoursFromMidnight() {
         return concreteShift.getDefaultStartTimeInHoursFromMidnight();
     }
+
+    /**
+     * Checks if this shift's time interval fully covers another shift's interval on the same day.
+     * For example, a 7am-7pm shift covers a 7am-3pm shift.
+     *
+     * @param otherShift The shift to check if it's contained within this one.
+     * @return true if this shift fully covers the other shift.
+     */
+    public boolean covers(ShiftDefinition otherShift) {
+        if (otherShift == null || otherShift.isOffShift() || this.isOffShift()) {
+            return false;
+        }
+
+        double thisStart = this.getStartTimeInHoursFromMidnight();
+        double thisEnd = thisStart + this.getLengthInHours();
+
+        double otherStart = otherShift.getStartTimeInHoursFromMidnight();
+        double otherEnd = otherStart + otherShift.getLengthInHours();
+
+        return thisStart <= otherStart && thisEnd >= otherEnd;
+    }
+
     // It's good practice to override equals and hashCode if ShiftDefinition
     // objects are stored in collections like Sets or used as Map keys,
     // primarily based on the lpShiftId.
