@@ -99,45 +99,37 @@ public final class SchedulingInputFactory {
         return staff;
     }
 
-    /**
-     * Generates the staffing demands for the entire simulation period based on a 12-hour shift model.
-     *
-     * @param config  The simulation configuration.
-     * @param numDays The number of days in the simulation.
-     * @return A list of all Demand objects.
-     */
     private static List<Demand> generateDemands(Config config, int numDays) {
         List<Demand> demands = new ArrayList<>();
-
-        // Combine day and evening patient estimates for the 12-hour day shift
-        int dayShiftTrauma = config.getEstTraumaPatientsDay() + config.getEstTraumaPatientsEvening();
-        int dayShiftNonTrauma = config.getEstNonTraumaPatientsDay() + config.getEstNonTraumaPatientsEvening();
-
-        Map<Role, Integer> dayShiftRequirements = OregonStaffingRules.getStaffRequirements(
-                dayShiftTrauma,
-                dayShiftNonTrauma,
+        // Base demands on the three core 8-hour periods from the config estimates
+        Map<Role, Integer> dayRequirements = OregonStaffingRules.getStaffRequirements(
+                config.getEstTraumaPatientsDay(),
+                config.getEstNonTraumaPatientsDay(),
                 config.getCNARatio(),
                 config.getLPNRatio());
-
-        // Use night estimates for the 12-hour night shift
-        Map<Role, Integer> nightShiftRequirements = OregonStaffingRules.getStaffRequirements(
+        Map<Role, Integer> eveningRequirements = OregonStaffingRules.getStaffRequirements(
+                config.getEstTraumaPatientsEvening(),
+                config.getEstNonTraumaPatientsEvening(),
+                config.getCNARatio(),
+                config.getLPNRatio());
+        Map<Role, Integer> nightRequirements = OregonStaffingRules.getStaffRequirements(
                 config.getEstTraumaPatientsNight(),
                 config.getEstNonTraumaPatientsNight(),
                 config.getCNARatio(),
                 config.getLPNRatio());
 
         for (int dayIndex = 0; dayIndex < numDays; dayIndex++) {
-            // Add demand for the 12-hour day shift ("d12")
-            for (Map.Entry<Role, Integer> entry : dayShiftRequirements.entrySet()) {
-                if (entry.getValue() > 0) {
-                    demands.add(new Demand(entry.getKey(), dayIndex, "d12", entry.getValue()));
-                }
+            // Add demand for the 8-hour day shift ("d8")
+            for (Map.Entry<Role, Integer> entry : dayRequirements.entrySet()) {
+                if (entry.getValue() > 0) demands.add(new Demand(entry.getKey(), dayIndex, "d8", entry.getValue()));
             }
-            // Add demand for the 12-hour night shift ("n12")
-            for (Map.Entry<Role, Integer> entry : nightShiftRequirements.entrySet()) {
-                if (entry.getValue() > 0) {
-                    demands.add(new Demand(entry.getKey(), dayIndex, "n12", entry.getValue()));
-                }
+            // Add demand for the 8-hour evening shift ("e8")
+            for (Map.Entry<Role, Integer> entry : eveningRequirements.entrySet()) {
+                if (entry.getValue() > 0) demands.add(new Demand(entry.getKey(), dayIndex, "e8", entry.getValue()));
+            }
+            // Add demand for the 8-hour night shift ("n8")
+            for (Map.Entry<Role, Integer> entry : nightRequirements.entrySet()) {
+                if (entry.getValue() > 0) demands.add(new Demand(entry.getKey(), dayIndex, "n8", entry.getValue()));
             }
         }
         return demands;

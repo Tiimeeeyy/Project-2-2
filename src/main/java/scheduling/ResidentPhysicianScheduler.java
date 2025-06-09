@@ -55,9 +55,7 @@ public class ResidentPhysicianScheduler {
             throw new IllegalArgumentException("OptimizationInput cannot be null.");
         }
 
-        List<StaffMemberInterface> residentStaff = fullInput.getStaffMembers().stream()
-                .filter(staff -> staff.getRole() == Role.RESIDENT_PHYSICIAN)
-                .collect(Collectors.toList());
+        List<StaffMemberInterface> residentStaff = fullInput.getStaffMembers().stream().filter(staff -> staff.getRole() == Role.RESIDENT_PHYSICIAN).collect(Collectors.toList());
 
         if (residentStaff.isEmpty()) {
             logger.info("No resident physician staff found. Returning empty feasible schedule.");
@@ -65,12 +63,9 @@ public class ResidentPhysicianScheduler {
         }
 
         // Assuming demands are also filtered or specific to residents if this scheduler is called
-        List<Demand> residentDemands = fullInput.getDemands().stream()
-                .filter(demand -> demand.getRequiredRole() == Role.RESIDENT_PHYSICIAN)
-                .toList();
+        List<Demand> residentDemands = fullInput.getDemands().stream().filter(demand -> demand.getRequiredRole() == Role.RESIDENT_PHYSICIAN).toList();
 
-        logger.info("Optimizing schedule for " + residentStaff.size() + " resident physicians against "
-                + residentDemands.size() + " resident demands.");
+        logger.info("Optimizing schedule for " + residentStaff.size() + " resident physicians against " + residentDemands.size() + " resident demands.");
 
         MPSolver solver = MPSolver.createSolver("SCIP");
         if (solver == null) {
@@ -125,7 +120,7 @@ public class ResidentPhysicianScheduler {
                 // OT hours can make up the difference to the hard cap.
                 totalOtHours[r][w] = solver.makeNumVar(0.0, RESIDENT_MAX_HOURS_PER_WEEK_HARD_CAP, "res_otH_" + staffIdPrefix + "_" + w);
                 // Actual total hours for the week, capped by the configured input (expected to be ~80 for residents) AND the hard rule.
-                totalActualHours[r][w] = solver.makeNumVar(0.0, Math.min(residentConfiguredMaxTotalHoursWeek, RESIDENT_MAX_HOURS_PER_WEEK_HARD_CAP) , "res_actualH_" + staffIdPrefix + "_" + w);
+                totalActualHours[r][w] = solver.makeNumVar(0.0, Math.min(residentConfiguredMaxTotalHoursWeek, RESIDENT_MAX_HOURS_PER_WEEK_HARD_CAP), "res_actualH_" + staffIdPrefix + "_" + w);
             }
         }
 
@@ -181,26 +176,33 @@ public class ResidentPhysicianScheduler {
                 }
             }
         }
-
         // 5. Demand Coverage (if residents directly cover specific demands)
         for (Demand demand : residentDemands) {
             Role requiredRole = demand.getRequiredRole();
-            if (requiredRole != Role.RESIDENT_PHYSICIAN) continue; // Should be filtered already but double check
+            if (requiredRole != Role.RESIDENT_PHYSICIAN) continue;
 
             int d = demand.getDayIndex();
-            String lpShiftId = demand.getLpShiftId();
+            String demandedLpShiftId = demand.getLpShiftId();
             int requiredCount = demand.getRequiredCount();
-            int s = lpShiftIds.indexOf(lpShiftId);
 
-            if (s == -1 || requiredCount <= 0) continue;
+            ShiftDefinition demandedShift = lpShifts.get(demandedLpShiftId);
+            if (demandedShift == null || requiredCount <= 0) continue;
 
-            MPConstraint c = solver.makeConstraint(requiredCount, INFINITY, "res_demand_" + lpShiftId + "_d" + d);
-            for (int r_idx = 0; r_idx < numStaff; r_idx++) {
-                c.setCoefficient(x[r_idx][s][d], 1.0);
+            MPConstraint c = solver.makeConstraint(requiredCount, INFINITY, "res_demand_" + requiredRole + "_" + demandedLpShiftId + "_d" + d);
+            for (int r = 0; r < numStaff; r++) {
+                if (residentStaff.get(r).getRole() == requiredRole) {
+                    // Check all available shifts to see if they can cover the demanded shift
+                    for (int s = 0; s < numLpShifts; s++) {
+                        ShiftDefinition potentialShift = lpShifts.get(lpShiftIds.get(s));
+                        if (potentialShift.covers(demandedShift)) {
+                            c.setCoefficient(x[r][s][d], 1.0);
+                        }
+                    }
+                }
             }
         }
-
         // 6. Minimum Rest Period (e.g., 10 hours after a 12+ hour shift)
+
         for (int r = 0; r < numStaff; r++) {
             for (int d = 0; d < numDays; d++) {
                 for (int sLongIdx = 0; sLongIdx < numLpShifts; sLongIdx++) {

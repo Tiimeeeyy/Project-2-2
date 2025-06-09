@@ -175,19 +175,23 @@ public class AdminStaffScheduler {
             if (!isAdminRole(requiredRole)) continue;
 
             int d = demand.getDayIndex();
-            String lpShiftId = demand.getLpShiftId();
+            String demandedLpShiftId = demand.getLpShiftId();
             int requiredCount = demand.getRequiredCount();
-            int s = lpShiftIds.indexOf(lpShiftId);
 
-            if (s == -1 || requiredCount <= 0) continue;
+            ShiftDefinition demandedShift = lpShifts.get(demandedLpShiftId);
+            if (demandedShift == null || requiredCount <= 0) continue;
 
-            MPConstraint c = solver.makeConstraint(requiredCount, INFINITY, "adm_demand_" + lpShiftIds.get(s) + "_d" + d);
-            for (int a_idx = 0; a_idx < numStaff; a_idx++) {
-                // Only count staff of the specific required admin role if you have multiple admin roles.
-                // If isAdminRole just checks for any admin role, and demands are specific (e.g. ADMIN_CLERK vs. RECEPTIONIST)
-                // you might need: adminStaffList.get(a_idx).getRole() == requiredRole
-                if (adminStaffList.get(a_idx).getRole() == requiredRole) { // Ensure matching specific admin role if demand is specific
-                    c.setCoefficient(x[a_idx][s][d], 1.0);
+            MPConstraint c = solver.makeConstraint(requiredCount, INFINITY, "adm_demand_" + requiredRole + "_" + demandedLpShiftId + "_d" + d);
+            for (int a = 0; a < numStaff; a++) {
+                if (adminStaffList.get(a).getRole() == requiredRole) {
+                    // Check all available shifts to see if they can cover the demanded shift
+                    for (int s = 0; s < numLpShifts; s++) {
+                        ShiftDefinition potentialShift = lpShifts.get(lpShiftIds.get(s));
+                        if (potentialShift.covers(demandedShift)) {
+                            // If this shift (e.g., d12) covers the demand (e.g., d8), add it to the constraint
+                            c.setCoefficient(x[a][s][d], 1.0);
+                        }
+                    }
                 }
             }
         }

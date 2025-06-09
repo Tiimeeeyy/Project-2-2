@@ -157,20 +157,23 @@ public class NurseScheduler {
         for (Demand demand : nurseDemands) {
             Role requiredRole = demand.getRequiredRole();
             int d = demand.getDayIndex();
-            String lpShiftId = demand.getLpShiftId();
+            String demandedLpShiftId = demand.getLpShiftId();
             int requiredCount = demand.getRequiredCount();
 
-            int sIdx = lpShiftIds.indexOf(lpShiftId);
-            if (sIdx == -1) {
-                logger.warning("LP Shift ID '" + lpShiftId + "' in nurse demand not found. Skipping this demand constraint.");
-                continue;
-            }
-            if (requiredCount <= 0) continue; // No demand to enforce
+            ShiftDefinition demandedShift = lpShifts.get(demandedLpShiftId);
+            if (demandedShift == null || requiredCount <= 0) continue;
 
-            MPConstraint c = solver.makeConstraint(requiredCount, INFINITY, "demand_" + requiredRole + "_" + lpShiftId + "_d" + d);
+            MPConstraint c = solver.makeConstraint(requiredCount, INFINITY, "demand_" + requiredRole + "_" + demandedLpShiftId + "_d" + d);
             for (int n = 0; n < numStaff; n++) {
                 if (nursingStaff.get(n).getRole() == requiredRole) {
-                    c.setCoefficient(x[n][sIdx][d], 1.0);
+                    // Check all available shifts to see if they can cover the demanded shift
+                    for (int sIdx = 0; sIdx < numLpShifts; sIdx++) {
+                        ShiftDefinition potentialShift = lpShifts.get(lpShiftIds.get(sIdx));
+                        if (potentialShift.covers(demandedShift)) {
+                            // If this shift (e.g., d12) covers the demand (e.g., d8), add it to the constraint
+                            c.setCoefficient(x[n][sIdx][d], 1.0);
+                        }
+                    }
                 }
             }
         }
