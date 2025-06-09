@@ -51,4 +51,8 @@ public enum Role {
         return roleToCheck == RESIDENT_PHYSICIAN || roleToCheck == CARDIOLOGIST || roleToCheck == SURGEON;
     }
 
+    public static boolean isAdminClerkRole(Role roleToCheck) {
+        return roleToCheck == ADMIN_CLERK;
+    }
+
 }

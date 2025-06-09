@@ -56,7 +56,7 @@ public class ResidentPhysicianScheduler {
         }
 
         List<StaffMemberInterface> residentStaff = fullInput.getStaffMembers().stream()
-                .filter(staff -> staff.getRole() == Role.RESIDENT_PHYSICIAN || staff.getRole() == Role.CARDIOLOGIST)
+                .filter(staff -> staff.getRole() == Role.RESIDENT_PHYSICIAN)
                 .collect(Collectors.toList());
 
         if (residentStaff.isEmpty()) {
