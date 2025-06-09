@@ -1,9 +1,13 @@
 package simulation;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 import org.apache.commons.math3.distribution.ExponentialDistribution;
@@ -49,10 +53,12 @@ public class DES {
     private OptimizedScheduleOutput nurseSchedule;
     private OptimizedScheduleOutput physicianSchedule;
     private OptimizedScheduleOutput residentSchedule;
+    private String stringOutputData;
     private boolean useRandomSchedule;
     private int hourlyArrivals;
 
     public DES() throws IOException {
+        this.stringOutputData = "Hour,Arrivals,Waiting,Treating,Available Rooms\n";
         this.useRandomSchedule = false;
         this.patientsRejected = 0;
         this.patientsTreated = 0;
@@ -99,7 +105,7 @@ public class DES {
      * Starts the simulation, starting at midnight. All parameters except Duration are from the config.json file.
      * @param duration the duration of the simulation.
      */
-    public void start(Duration duration){
+    public void start(Duration duration) throws FileNotFoundException {
         //schedule staff
         System.out.println("Scheduling staff...");
         nurseSchedule = getSchedule(duration, "nurse");
@@ -133,7 +139,7 @@ public class DES {
                 currentHour = newHour;
             }
         }
-        
+        writeToCSV();
         System.out.println("Summary ("+duration.toString().substring(2)+" duration):\n"+eventsProcessed+" events processed\n"+numArrivals+" patient arrivals\n"
                 +patientsTreated+" patients treated\n"+patientsRejected+" patients rejected");
     }
@@ -370,6 +376,7 @@ public class DES {
             data[3][hour] = treatingPatients.size();
             data[4][hour] = er.getTreatmentRooms() - er.getOccupiedTreatmentRooms();
         }
+        logToCSV(hour);
         hourlyArrivals = 0;
     }
     
@@ -455,5 +462,21 @@ public class DES {
         }
         // Fallback in case cumulative never exceeds r
         return diagnosisProbs.length;
+    }
+
+    private void logToCSV(int hour){
+        for (int[] datum:data
+             ) {
+            stringOutputData+=Integer.toString(datum[hour])+",";
+        }
+        stringOutputData=stringOutputData.substring(0,stringOutputData.length()-1)+"\n";
+    }
+    private void writeToCSV() throws FileNotFoundException {
+        String filename = "log_"+LocalDateTime.now().format(DateTimeFormatter.ofPattern("ddMMHHmmss"))+".csv";
+        File output = new File(filename);
+        try (PrintWriter writer = new PrintWriter(output)) {
+            writer.println(stringOutputData);
+        }
+        System.out.println("Printed output to "+filename);
     }
 }
