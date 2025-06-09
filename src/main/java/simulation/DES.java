@@ -49,9 +49,11 @@ public class DES {
     private OptimizedScheduleOutput nurseSchedule;
     private OptimizedScheduleOutput physicianSchedule;
     private OptimizedScheduleOutput residentSchedule;
+    private boolean useRandomSchedule;
     private int hourlyArrivals;
 
     public DES() throws IOException {
+        this.useRandomSchedule = false;
         this.patientsRejected = 0;
         this.patientsTreated = 0;
         this.eventList = new LinkedList<>();

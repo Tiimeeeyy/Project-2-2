@@ -6,7 +6,7 @@
 
   "CNARatio": 1,
   "LPNRatio": 1,
-
+  "useRandomSchedule": true,
   "maxHoursPerDay": 12,
   "maxRegularHoursPerWeek": 48,
   "maxTotalHoursPerWeek": 48,

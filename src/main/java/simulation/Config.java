@@ -65,6 +65,7 @@ public final class Config {
     private int estNonTraumaPatientsEvening;
     private int estNonTraumaPatientsNight;
     private boolean visualize;
+    private boolean useRandomSchedule;
 
     // Private constructor to enforce singleton pattern
     private Config() {}
