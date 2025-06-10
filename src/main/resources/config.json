@@ -86,7 +86,7 @@
     "sinusoidal_24h_2x": "2*((-0.25)*cos((pi/12)*t)+0.75)",
     "sinusoidal_24h_0.5x": "0.5*((-0.25)*cos((pi/12)*t)+0.75)",
     "sin_full_range_24h": "cos((pi/12)*t)+1",
-    "sin_weekend_1.5x": "max(min((10*cos((1/42)*(t-160))),1.5),(-0.25)*cos((pi/12)*t)+0.75",
+    "sin_weekend_1.5x": "max(min((10*cos((1/42)*(t-160))),1.5),(-0.25)*cos((pi/12)*t)+0.75)",
     "month_5x": "max((1000*cos((pi/336)*(t+336))-995),((-0.25)*cos((pi/12)*t)+0.75))",
     "month_10x": "max((1000*cos((pi/336)*(t+336))-990),((-0.25)*cos((pi/12)*t)+0.75))",
     "wk_2wk_4wk_2_5_10": "max((1000*cos((pi/336)*(t+336))-990),(1000*cos((pi/168)*(t+168))-995),(10*cos((pi/84)*(t+84))-9),((-0.25)*cos((pi/12)*t)+0.75))",
@@ -97,7 +97,7 @@
     "sin_ldecrease_5x_wk1": "max(((-0.25)*cos((pi/12)*t)+0.25-((5t-420)/84)),(-0.25)*cos((pi/12)*t)+0.75",
     "sin_ldecrease_5x_wk4": "max(((-0.25)*cos((pi/12)*t)+0.25-((5t-1680)/336)),(-0.25)*cos((pi/12)*t)+0.75"
   },
-  "defaultArrivalFunction": "sinusoidal_24h",
+  "defaultArrivalFunction": "sin_weekend_1.5x",
   "patientMinAge": 5,
   "patientMaxAge": 99,
 
