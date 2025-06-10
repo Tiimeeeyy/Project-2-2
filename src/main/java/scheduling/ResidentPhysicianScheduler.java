@@ -33,7 +33,6 @@ public class ResidentPhysicianScheduler {
 
     // Common Resident Physician Rules (inspired by ACGME guidelines)
     // These constants define the core resident-specific rules.
-    // OptimizationInput should be configured to align with these where it provides parameters (e.g., maxTotalHoursPerWeek = 80).
     private static final double RESIDENT_MAX_HOURS_PER_WEEK_HARD_CAP = 80.0; // Hard cap for any single week
     private static final double RESIDENT_MAX_AVG_HOURS_PER_WEEK_OVER_PERIOD = 80.0; // Averaged over scheduling period
     private static final double MINIMUM_DAYS_OFF_PER_WEEK = 1.0;
@@ -78,7 +77,7 @@ public class ResidentPhysicianScheduler {
         int sFreeIdx = -1;
         for (int i = 0; i < lpShiftIds.size(); i++) {
             ShiftDefinition sd = lpShifts.get(lpShiftIds.get(i));
-            if (sd != null && sd.isOffShift()) { // Assumes Shift.FREE correctly sets isOffShift
+            if (sd != null && sd.isOffShift()) {
                 sFreeIdx = i;
                 logger.fine("Identified FREE shift for residents: " + lpShiftIds.get(i) + " at index " + sFreeIdx);
                 break;

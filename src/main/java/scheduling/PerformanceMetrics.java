@@ -10,7 +10,6 @@ import lombok.Getter;
 public class PerformanceMetrics {
     private final double rejectionRate; // Percentage of patients rejected
     private final double averageWaitingTimeMins; // Average time patients wait
-    // Add other metrics as needed, e.g., average staff utilization
 
     public PerformanceMetrics(double rejectionRate, double averageWaitingTimeMins) {
         this.rejectionRate = rejectionRate;

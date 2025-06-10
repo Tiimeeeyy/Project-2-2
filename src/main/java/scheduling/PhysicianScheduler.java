@@ -154,9 +154,6 @@ public class PhysicianScheduler {
                 }
             }
         }
-
-        // In src/main/java/scheduling/PhysicianScheduler.java
-
         // Demand/Coverage Constraint for physicianDemands
         for (Demand demand : physicianDemands) {
             Role requiredRole = demand.getRequiredRole();
@@ -172,13 +169,7 @@ public class PhysicianScheduler {
                 if (physicianStaff.get(p).getRole() == requiredRole) {
                     for (int sIdx = 0; sIdx < numLpShifts; sIdx++) {
                         ShiftDefinition potentialShift = lpShifts.get(lpShiftIds.get(sIdx));
-
-                        // --- START MODIFICATION ---
-                        // OLD, flexible logic: if (potentialShift.covers(demandedShift))
-
-                        // NEW, strict logic: Only allow a shift to be filled by an identical shift.
                         if (potentialShift.getLpShiftId().equals(demandedLpShiftId)) {
-                            // --- END MODIFICATION ---
                             c.setCoefficient(x[p][sIdx][d], 1.0);
                         }
                     }
@@ -262,10 +253,8 @@ public class PhysicianScheduler {
     }
 
     private boolean isAttendingPhysicianRole(Role role) {
-        // Add all specific attending physician roles from your Role enum
         return role == Role.ATTENDING_PHYSICIAN ||
                 role == Role.SURGEON || // Assuming surgeons are attending level for this scheduler
                 role == Role.CARDIOLOGIST; // Assuming cardiologists are attending level
-        // Exclude RESIDENT_PHYSICIAN if they have a separate scheduler or different rules
     }
 }

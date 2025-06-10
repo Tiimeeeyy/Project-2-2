@@ -66,6 +66,7 @@ public final class Config {
     private int interarrivalTimeMins;
     private boolean visualize;
     private boolean useRandomSchedule;
+    private boolean useHistoricalAdjustment;
 
     // Private constructor to enforce singleton pattern
     private Config() {}

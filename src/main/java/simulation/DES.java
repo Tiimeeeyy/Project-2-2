@@ -123,6 +123,13 @@ public class DES {
         Duration totalTimeSimulated = Duration.ZERO;
         int cycleNumber = 1;
 
+        // NEW: Variables for metrics tracking
+        PerformanceMetrics lastCycleMetrics = null;
+        int patientsTreatedAtCycleStart = 0;
+        int patientsRejectedAtCycleStart = 0;
+        double totalWaitTimeAtCycleStart = 0.0;
+        int admissionsAtCycleStart = 0;
+
         // Initialize data collection for the total simulation duration
         int totalHours = (int) totalSimulationDuration.toHours();
         this.data = new int[10][totalHours];
@@ -134,8 +141,21 @@ public class DES {
         while (totalTimeSimulated.compareTo(totalSimulationDuration) < 0) {
             System.out.println("\n--- Starting Simulation Cycle " + cycleNumber + " (Time: " + totalTimeSimulated.toDays() + " to " + (totalTimeSimulated.toDays() + schedulingPeriod.toDays()) + " days) ---");
 
-            // Create the single input object needed for this cycle's scheduling.
-            OptimizationInput input = SchedulingInputFactory.createInput(this.config, schedulingPeriod);
+            // Store metric totals at the beginning of the cycle
+            patientsTreatedAtCycleStart = this.patientsTreated;
+            patientsRejectedAtCycleStart = this.patientsRejected;
+            totalWaitTimeAtCycleStart = this.totalWaitTime;
+            admissionsAtCycleStart = this.totalERAdmissions;
+
+            // MODIFIED: Create OptimizationInput with optional feedback
+            OptimizationInput input;
+            if (config.isUseHistoricalAdjustment() && lastCycleMetrics != null) {
+                System.out.println("Using historical metrics to adjust demand for cycle " + cycleNumber);
+                input = SchedulingInputFactory.createInput(this.config, schedulingPeriod, lastCycleMetrics);
+            } else {
+                input = SchedulingInputFactory.createInput(this.config, schedulingPeriod);
+            }
+
 
             // Check the config to decide which scheduler to use.
             if (config.isUseRandomSchedule()) {
@@ -185,10 +205,33 @@ public class DES {
                 }
             }
 
+            // NEW: Calculate and store metrics for the completed cycle
+            int treatedThisCycle = this.patientsTreated - patientsTreatedAtCycleStart;
+            int rejectedThisCycle = this.patientsRejected - patientsRejectedAtCycleStart;
+            int admissionsThisCycle = this.totalERAdmissions - admissionsAtCycleStart;
+            double waitTimeThisCycleSeconds = this.totalWaitTime - totalWaitTimeAtCycleStart;
+            int totalArrivalsThisCycle = admissionsThisCycle + rejectedThisCycle;
+
+            double rejectionRate = 0.0;
+            if (totalArrivalsThisCycle > 0) {
+                rejectionRate = (double) rejectedThisCycle / totalArrivalsThisCycle;
+            }
+
+            double avgWaitingTimeMins = 0.0;
+            if (admissionsThisCycle > 0) {
+                avgWaitingTimeMins = (waitTimeThisCycleSeconds / admissionsThisCycle) / 60.0; // Convert seconds to minutes
+            }
+
+            lastCycleMetrics = new PerformanceMetrics(rejectionRate, avgWaitingTimeMins);
+
+            System.out.println("--- End of Simulation Cycle " + (cycleNumber) + " ---");
+            System.out.printf("--- Cycle %d Metrics ---%nRejection Rate: %.2f%%%nAvg. Wait Time: %.2f mins%n",
+                    cycleNumber, rejectionRate * 100, avgWaitingTimeMins);
+
+
             // Update total simulated time
             totalTimeSimulated = totalTimeSimulated.plus(schedulingPeriod);
             cycleNumber++;
-            System.out.println("--- End of Simulation Cycle " + (cycleNumber - 1) + " ---");
         }
 
         // Final actions after all cycles are complete

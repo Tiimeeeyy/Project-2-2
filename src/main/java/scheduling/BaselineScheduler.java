@@ -151,10 +151,6 @@ public class BaselineScheduler {
                 }
             }
         }
-
-        // Add more rule checks here as needed (e.g., resident-specific ACGME rules)
-        // For now, these are the most critical ones.
-
         return true;
     }
 }

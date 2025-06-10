@@ -178,7 +178,7 @@ public class NurseScheduler {
             }
         }
 
-        // NEW CONSTRAINT: Minimum rest period after a long shift (e.g., 10 hours after a 12-hour shift)
+        // Minimum rest period after a long shift (e.g., 10 hours after a 12-hour shift)
         for (int n = 0; n < numStaff; n++) { // For each nurse
             for (int d = 0; d < numDays; d++) { // For each day in the planning period
                 for (int sLongIdx = 0; sLongIdx < numLpShifts; sLongIdx++) { // Iterate over all possible shifts for nurse n on day d

@@ -4,11 +4,7 @@ import simulation.Config;
 import staff.*;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * A factory class responsible for creating OptimizationInput objects.
@@ -32,16 +28,22 @@ public final class SchedulingInputFactory {
         List<Demand> demands = generateDemands(config, numDays);
         Map<String, ShiftDefinition> lpShifts = defineLpShifts();
 
-        return OptimizationInput.builder()
-                .staffMembers(staffMembers)
-                .demands(demands)
-                .lpShifts(lpShifts)
-                .numDaysInPeriod(numDays)
-                .numWeeksInPeriod(numWeeks)
-                .maxHoursPerDay(config.getMaxHoursPerDay())
-                .maxRegularHoursPerWeek(config.getMaxRegularHoursPerWeek())
-                .maxTotalHoursPerWeek(config.getMaxTotalHoursPerWeek())
-                .build();
+        return OptimizationInput.builder().staffMembers(staffMembers).demands(demands).lpShifts(lpShifts).numDaysInPeriod(numDays).numWeeksInPeriod(numWeeks).maxHoursPerDay(config.getMaxHoursPerDay()).maxRegularHoursPerWeek(config.getMaxRegularHoursPerWeek()).maxTotalHoursPerWeek(config.getMaxTotalHoursPerWeek()).build();
+    }
+
+    /**
+     * Overloaded method to create input with feedback from previous performance metrics.
+     */
+    public static OptimizationInput createInput(Config config, Duration duration, PerformanceMetrics metrics) {
+        int numDays = (int) Math.ceil((double) duration.toHours() / 24);
+        int numWeeks = (int) Math.ceil((double) duration.toHours() / 168);
+
+        List<StaffMemberInterface> staffMembers = generateStaff(config);
+        // Call the new generateDemands method with metrics
+        List<Demand> demands = generateDemands(config, numDays, metrics);
+        Map<String, ShiftDefinition> lpShifts = defineLpShifts();
+
+        return OptimizationInput.builder().staffMembers(staffMembers).demands(demands).lpShifts(lpShifts).numDaysInPeriod(numDays).numWeeksInPeriod(numWeeks).maxHoursPerDay(config.getMaxHoursPerDay()).maxRegularHoursPerWeek(config.getMaxRegularHoursPerWeek()).maxTotalHoursPerWeek(config.getMaxTotalHoursPerWeek()).build();
     }
 
     /**
@@ -102,21 +104,9 @@ public final class SchedulingInputFactory {
     private static List<Demand> generateDemands(Config config, int numDays) {
         List<Demand> demands = new ArrayList<>();
         // Base demands on the three core 8-hour periods from the config estimates
-        Map<Role, Integer> dayRequirements = OregonStaffingRules.getStaffRequirements(
-                config.getEstTraumaPatientsDay(),
-                config.getEstNonTraumaPatientsDay(),
-                config.getCNARatio(),
-                config.getLPNRatio());
-        Map<Role, Integer> eveningRequirements = OregonStaffingRules.getStaffRequirements(
-                config.getEstTraumaPatientsEvening(),
-                config.getEstNonTraumaPatientsEvening(),
-                config.getCNARatio(),
-                config.getLPNRatio());
-        Map<Role, Integer> nightRequirements = OregonStaffingRules.getStaffRequirements(
-                config.getEstTraumaPatientsNight(),
-                config.getEstNonTraumaPatientsNight(),
-                config.getCNARatio(),
-                config.getLPNRatio());
+        Map<Role, Integer> dayRequirements = OregonStaffingRules.getStaffRequirements(config.getEstTraumaPatientsDay(), config.getEstNonTraumaPatientsDay(), config.getCNARatio(), config.getLPNRatio());
+        Map<Role, Integer> eveningRequirements = OregonStaffingRules.getStaffRequirements(config.getEstTraumaPatientsEvening(), config.getEstNonTraumaPatientsEvening(), config.getCNARatio(), config.getLPNRatio());
+        Map<Role, Integer> nightRequirements = OregonStaffingRules.getStaffRequirements(config.getEstTraumaPatientsNight(), config.getEstNonTraumaPatientsNight(), config.getCNARatio(), config.getLPNRatio());
 
         for (int dayIndex = 0; dayIndex < numDays; dayIndex++) {
             // Add demand for the 8-hour day shift ("d8")
@@ -133,5 +123,68 @@ public final class SchedulingInputFactory {
             }
         }
         return demands;
+    }
+
+    /**
+     * Overloaded method to generate demands adjusted by performance metrics.
+     * This version includes aggressive cost-reduction logic.
+     */
+    private static List<Demand> generateDemands(Config config, int numDays, PerformanceMetrics metrics) {
+        // First, get the baseline demands from the OregonStaffingRules
+        List<Demand> baselineDemands = generateDemands(config, numDays);
+        List<Demand> adjustedDemands = new ArrayList<>();
+
+        // --- Define Thresholds for Performance ---
+        // Thresholds for poor performance (when to increase demand)
+        final double HIGH_REJECTION_THRESHOLD = 0.05; // 5%
+        final double HIGH_WAIT_TIME_THRESHOLD_MINS = 45.0;
+
+        // Thresholds for excellent performance (when to decrease demand)
+        final double LOW_REJECTION_THRESHOLD = 0.01; // 1%
+        final double LOW_WAIT_TIME_THRESHOLD_MINS = 15.0;
+
+        double adjustmentFactor = 1.0;
+
+        // 1. Check for POOR performance and INCREASE demand
+        if (metrics.getRejectionRate() > HIGH_REJECTION_THRESHOLD || metrics.getAverageWaitingTimeMins() > HIGH_WAIT_TIME_THRESHOLD_MINS) {
+            System.out.println("Poor performance detected. Increasing demand factor.");
+            if (metrics.getRejectionRate() > HIGH_REJECTION_THRESHOLD) {
+                adjustmentFactor += 0.15; // Add 15% for high rejections
+            }
+            if (metrics.getAverageWaitingTimeMins() > HIGH_WAIT_TIME_THRESHOLD_MINS) {
+                adjustmentFactor += 0.10; // Add 10% for high wait times
+            }
+        }
+        // 2. Check for EXCELLENT performance and AGGRESSIVELY DECREASE demand
+        else if (metrics.getRejectionRate() < LOW_REJECTION_THRESHOLD && metrics.getAverageWaitingTimeMins() < LOW_WAIT_TIME_THRESHOLD_MINS) {
+            System.out.println("Excellent performance detected. Aggressively reducing demand factor to lower costs.");
+            // Reduce demand by 10% to test system resilience and find cost savings
+            adjustmentFactor -= 0.10;
+        }
+        // 3. If performance is acceptable (not poor, not excellent), do nothing
+        else {
+            System.out.println("Performance is within acceptable limits. No demand adjustment will be applied.");
+            return baselineDemands; // Return the original baseline demands
+        }
+
+
+        // Apply the calculated adjustment factor to the baseline demands
+        for (Demand demand : baselineDemands) {
+            int originalCount = demand.getRequiredCount();
+            if (originalCount == 0) {
+                adjustedDemands.add(demand);
+                continue;
+            }
+            // Ensure we don't reduce demand to zero unless the original demand was 1
+            int adjustedCount = (int) Math.ceil(originalCount * adjustmentFactor);
+            if (originalCount > 1 && adjustedCount < 1) {
+                adjustedCount = 1;
+            }
+
+            adjustedDemands.add(new Demand(demand.getRequiredRole(), demand.getDayIndex(), demand.getLpShiftId(), adjustedCount));
+        }
+
+        System.out.printf("Demands adjusted with factor: %.2f%n", adjustmentFactor);
+        return adjustedDemands;
     }
 }

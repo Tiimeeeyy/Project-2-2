@@ -78,14 +78,4 @@ public class OptimizationInput {
     // Lombok will generate a constructor that takes an instance of OptimizationInputBuilder.
     // If you need a public constructor for some reason, you can add it manually or use @AllArgsConstructor.
     // For now, relying on the builder.
-
-    // Example of how you might derive numWeeksInPeriod if not explicitly provided:
-    // public int getNumWeeksInPeriod() {
-    //     if (numDaysInPeriod <= 0) return 0;
-    //     return (int) Math.ceil(numDaysInPeriod / 7.0);
-    // }
-    // However, it's often better to pass it explicitly if the period isn't perfectly divisible by 7
-    // or if "week" has a specific meaning in the LP.
-    // Since the LP variables TotalRegHours_nw and TotalOTHours_nw are indexed by week 'w',
-    // numWeeksInPeriod is a critical input.
 }
