@@ -155,6 +155,8 @@ public class PhysicianScheduler {
             }
         }
 
+        // In src/main/java/scheduling/PhysicianScheduler.java
+
         // Demand/Coverage Constraint for physicianDemands
         for (Demand demand : physicianDemands) {
             Role requiredRole = demand.getRequiredRole();
@@ -168,10 +170,15 @@ public class PhysicianScheduler {
             MPConstraint c = solver.makeConstraint(requiredCount, INFINITY, "phy_demand_" + requiredRole + "_" + demandedLpShiftId + "_d" + d);
             for (int p = 0; p < numStaff; p++) {
                 if (physicianStaff.get(p).getRole() == requiredRole) {
-                    // Check all available shifts to see if they can cover the demanded shift
                     for (int sIdx = 0; sIdx < numLpShifts; sIdx++) {
                         ShiftDefinition potentialShift = lpShifts.get(lpShiftIds.get(sIdx));
-                        if (potentialShift.covers(demandedShift)) {
+
+                        // --- START MODIFICATION ---
+                        // OLD, flexible logic: if (potentialShift.covers(demandedShift))
+
+                        // NEW, strict logic: Only allow a shift to be filled by an identical shift.
+                        if (potentialShift.getLpShiftId().equals(demandedLpShiftId)) {
+                            // --- END MODIFICATION ---
                             c.setCoefficient(x[p][sIdx][d], 1.0);
                         }
                     }
