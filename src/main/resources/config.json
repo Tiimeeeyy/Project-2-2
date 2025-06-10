@@ -3,6 +3,7 @@
   "ERName": "St. Helen's Emergency Department",
   "ERCapacity": 40,
   "ERTreatmentRooms": 25,
+  "interarrivalTimeMins": 15,
 
   "CNARatio": 8.0,
   "LPNRatio": 15.0,

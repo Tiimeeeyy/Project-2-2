@@ -55,19 +55,27 @@ public class DES {
     private OptimizedScheduleOutput physicianSchedule;
     private OptimizedScheduleOutput residentSchedule;
     private String stringOutputData;
-    private boolean useRandomSchedule;
+    private final boolean useRandomSchedule;
+    private int totalArrivals;
     private int hourlyArrivals;
+    private int totalERAdmissions;
+    private double totalTreatmentTime;
+    private double avgTreatmentTime;
+    private double totalWaitTime;
+    private double avgWaitTime;
 
     public DES() throws IOException {
-        this.stringOutputData = "Hour,Arrivals,Waiting,Treating,Available Rooms\n";
+        this.totalTreatmentTime=0;
+        this.stringOutputData = "Hour,Arrivals,Waiting,Treating,Available Rooms,Total Treatment Time," +
+                "Average Treatment Time,Total Wait Time,Average Wait Time,Total Arrivals\n";
         this.useRandomSchedule = false;
         this.scheduler = new BaselineScheduler();
         this.patientsRejected = 0;
         this.patientsTreated = 0;
         this.eventList = new LinkedList<>();
         this.deltaTime = Duration.ZERO;
-        this.interarrivalTimeMins = 15;
         this.config = Config.getInstance();
+        this.interarrivalTimeMins = config.getInterarrivalTimeMins();
         this.er = new EmergencyRoom(
                 config.getERName(),
                 config.getERCapacity(),
@@ -117,7 +125,7 @@ public class DES {
 
         // Initialize data collection for the total simulation duration
         int totalHours = (int) totalSimulationDuration.toHours();
-        this.data = new int[5][totalHours];
+        this.data = new int[10][totalHours];
         this.hourlyArrivals = 0;
 
         System.out.println("Starting simulation for a total of " + totalSimulationDuration.toDays() + " days, in " + schedulingPeriod.toDays() + "-day cycles.");
@@ -263,11 +271,14 @@ public class DES {
      * @param p the patient that arrives
      */
     private void arrival(Patient p){
+        totalArrivals++;
+        p.setArrivalTime(deltaTime);
         hourlyArrivals++;
         if (DETAILED_LOGGING) {
             System.out.println("EVENT " + eventsProcessed + " | TIME " + deltaTime.toString().substring(2) + " | Patient " + p.getName() + " arrives needing " + p.getTriageLevel().getDescription().toLowerCase() + " care.");
         }
         if(er.addPatient(p)) {
+            totalERAdmissions++;
             if (canTreatPatient(p)) {
                 treat(er.getNextPatient());
             } else {
@@ -310,6 +321,8 @@ public class DES {
      * @param p the patient to treat
      */
     private void treat(Patient p){
+        totalWaitTime+=deltaTime.minus(p.getArrivalTime()).toSeconds();
+        avgWaitTime=totalWaitTime/totalERAdmissions;
         if(DETAILED_LOGGING){
             System.out.println(new String(new char[("EVENT "+eventsProcessed+" | TIME "+deltaTime.toString().substring(2)).length()]).replace('\0',' ')+" | Patient "+p.getName()+" begins treatment.");
         }
@@ -328,6 +341,8 @@ public class DES {
      */
     private void release(Patient p){
         patientsTreated++;
+        totalTreatmentTime+=p.getTreatmentTime().toSeconds();
+        avgTreatmentTime=totalTreatmentTime/patientsTreated;
         if(DETAILED_LOGGING){
             System.out.println("EVENT "+eventsProcessed+" | TIME "+deltaTime.toString().substring(2)+" | Patient "+p.getName()+" is discharged from the ER.");
         }
@@ -347,7 +362,6 @@ public class DES {
     /**
      * Retrieves the optimized schedule for a supercategory of staff roles (nurse, attending, or resident) using the LP
      * system with the parameters given in config.json.
-     * @param duration the duration of the simulation
      * @param staffType the type of staff ("nurse", "physician", or "resident") to get a schedule for
      * @return an OptimizedScheduleOutput object containing the schedule requested
      */
@@ -465,6 +479,11 @@ public class DES {
             data[2][hour] = er.getWaitingPatients().size();
             data[3][hour] = treatingPatients.size();
             data[4][hour] = er.getTreatmentRooms() - er.getOccupiedTreatmentRooms();
+            data[5][hour] = (int)totalTreatmentTime;
+            data[6][hour] = (int)avgTreatmentTime;
+            data[7][hour] = (int)totalWaitTime;
+            data[8][hour] = (int)avgWaitTime;
+            data[9][hour] = totalArrivals;
         }
         logToCSV(hour);
         hourlyArrivals = 0;
@@ -485,11 +504,11 @@ public class DES {
     
     public void setScenarioType(String arrivalFunctionName) {
         this.scenarioType = arrivalFunctionName;
-        
+
         // Update the arrival expression with the new function
         try {
             Map<String, String> arrivalFunctions = config.getPatientArrivalFunctions();
-            
+
             if (arrivalFunctions.containsKey(arrivalFunctionName)) {
                 // Create a new expression with the selected arrival function
                 String exprString = arrivalFunctions.get(arrivalFunctionName);

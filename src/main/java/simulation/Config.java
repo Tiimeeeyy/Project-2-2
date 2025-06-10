@@ -63,6 +63,7 @@ public final class Config {
     private int estNonTraumaPatientsDay;
     private int estNonTraumaPatientsEvening;
     private int estNonTraumaPatientsNight;
+    private int interarrivalTimeMins;
     private boolean visualize;
     private boolean useRandomSchedule;
 
