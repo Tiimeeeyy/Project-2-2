@@ -62,7 +62,18 @@
     "BLUE": 15.0, "GREEN": 45.0, "YELLOW": 90.0, "ORANGE": 120.0, "RED": 180.0
   },
   "patientArrivalFunctions": {
-    "sinusoidal_24h": "(-0.25)*cos((pi/12)*t)+0.75)"
+    "constant": "1",
+    "constant_2x": "2",
+    "constant_0.5x": "0.5",
+    "sinusoidal_24h": "(-0.25)*cos((pi/12)*t)+0.75",
+    "sinusoidal_24h_2x": "2*((-0.25)*cos((pi/12)*t)+0.75)",
+    "sinusoidal_24h_0.5x": "0.5*((-0.25)*cos((pi/12)*t)+0.75)",
+    "sin_full_range_24h": "cos((pi/12)*t)+1",
+    "sin_weekend_1.5x": "max(min((10*cos((1/42)*(t-160))),1.5),(-0.25)*cos((pi/12)*t)+0.75)",
+    "month_5x": "max((1000*cos((pi/336)*(t+336))-995),((-0.25)*cos((pi/12)*t)+0.75))",
+    "month_10x": "max((1000*cos((pi/336)*(t+336))-990),((-0.25)*cos((pi/12)*t)+0.75))",
+    "wk_2wk_4wk_2_5_10": "max((1000*cos((pi/336)*(t+336))-990),(1000*cos((pi/168)*(t+168))-995),(10*cos((pi/84)*(t+84))-9),((-0.25)*cos((pi/12)*t)+0.75))",
+    "3rd_week_3x": "max(min((100*cos((pi/336)*(t-420))-70),3),((-0.25)*cos((pi/12)*t)+0.75))"
   },
   "defaultArrivalFunction": "sinusoidal_24h",
   "patientMinAge": 5,
