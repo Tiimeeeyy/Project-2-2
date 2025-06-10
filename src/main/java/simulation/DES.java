@@ -415,12 +415,23 @@ public class DES {
         this.focusTriageLevel = triageLevel;
     }
     
-    public void setScenarioType(String scenarioType) {
-        this.scenarioType = scenarioType;
-        // Apply scenario-specific modifications
-        if ("emergency".equals(scenarioType)) {
-            // Increase arrival rate during emergency
-            this.interarrivalTimeMins = this.interarrivalTimeMins * 0.5; // Double the arrival rate
+    public void setScenarioType(String arrivalFunctionName) {
+        this.scenarioType = arrivalFunctionName;
+        
+        // Update the arrival expression with the new function
+        try {
+            Map<String, String> arrivalFunctions = config.getPatientArrivalFunctions();
+            
+            if (arrivalFunctions.containsKey(arrivalFunctionName)) {
+                // Create a new expression with the selected arrival function
+                String exprString = arrivalFunctions.get(arrivalFunctionName);
+                this.arrivalExpression.setExpressionString(exprString);
+                System.out.println("Updated arrival function to '" + arrivalFunctionName + "': f(t) = " + exprString);
+            } else {
+                System.out.println("Warning: Arrival function '" + arrivalFunctionName + "' not found in config. Using default.");
+            }
+        } catch (Exception e) {
+            System.out.println("Error updating arrival function: " + e.getMessage());
         }
     }
     

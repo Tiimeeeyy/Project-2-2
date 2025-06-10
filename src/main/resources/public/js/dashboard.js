@@ -18,12 +18,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     initializeCharts();
     loadDefaultConfiguration();
+    loadScenarios();
 });
 
 
 async function runSimulation() {
     const days = document.getElementById('days').value;
-    const scenario = document.getElementById('scenario').value;
+    const arrivalFunction = document.getElementById('scenario').value;
     const triageLevel = document.getElementById('triageLevel').value;
     const triageClassifier = document.getElementById('triageClassifier').value;
     const statusElement = document.getElementById('status');
@@ -34,7 +35,7 @@ async function runSimulation() {
     try {
         const requestBody = {
             days: parseInt(days),
-            scenario: scenario,
+            arrivalFunction: arrivalFunction,
             hyperparameters: hyperparameters
         };
         
@@ -310,6 +311,40 @@ async function loadDefaultConfiguration() {
         hyperparameters = defaults;
     } catch (error) {
         console.error('Error loading default configuration:', error);
+    }
+}
+
+async function loadScenarios() {
+    try {
+        const response = await fetch('/api/config/scenarios');
+        const scenarios = await response.json();
+        
+        const scenarioSelect = document.getElementById('scenario');
+        // Clear existing options
+        scenarioSelect.innerHTML = '';
+        
+        // Add scenarios from API
+        scenarios.forEach(scenario => {
+            const option = document.createElement('option');
+            option.value = scenario.value;
+            option.textContent = scenario.label;
+            option.title = scenario.description; // Show description on hover
+            scenarioSelect.appendChild(option);
+        });
+        
+        // Set default selection to sinusoidal_24h if available
+        const defaultOption = scenarioSelect.querySelector('option[value="sinusoidal_24h"]');
+        if (defaultOption) {
+            defaultOption.selected = true;
+        }
+    } catch (error) {
+        console.error('Error loading scenarios:', error);
+        // Fallback to hardcoded scenarios if API fails
+        const scenarioSelect = document.getElementById('scenario');
+        scenarioSelect.innerHTML = `
+            <option value="sinusoidal_24h">Regular Operation</option>
+            <option value="constant_2x">Emergency Scenario</option>
+        `;
     }
 }
 
