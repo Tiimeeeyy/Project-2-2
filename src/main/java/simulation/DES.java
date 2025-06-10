@@ -55,6 +55,7 @@ public class DES {
     private OptimizedScheduleOutput physicianSchedule;
     private OptimizedScheduleOutput residentSchedule;
     private String stringOutputData;
+    private boolean useUnlimitedStaff;
     private final boolean useRandomSchedule;
     private int totalArrivals;
     private int hourlyArrivals;
@@ -75,6 +76,7 @@ public class DES {
         this.eventList = new LinkedList<>();
         this.deltaTime = Duration.ZERO;
         this.config = Config.getInstance();
+        this.useUnlimitedStaff = config.isUseUnlimitedStaff();
         this.interarrivalTimeMins = config.getInterarrivalTimeMins();
         this.er = new EmergencyRoom(
                 config.getERName(),
@@ -350,9 +352,10 @@ public class DES {
             double reqRPs = config.getTriageRPRequirements().get(triageLevel);
             //currently treats nurse roles equally
             Map<String,Double> availableStaff = er.getAvailableStaff();
-            if((reqNurses<=availableStaff.get("Nurses"))
+            if(((reqNurses<=availableStaff.get("Nurses"))
                     &&(reqPhysicians<=availableStaff.get("Physicians"))
                     &&(reqRPs<=availableStaff.get("Residents")))
+                    ||useUnlimitedStaff)
             {return true;}
         }
         return false;
@@ -369,9 +372,11 @@ public class DES {
         if(DETAILED_LOGGING){
             System.out.println(new String(new char[("EVENT "+eventsProcessed+" | TIME "+deltaTime.toString().substring(2)).length()]).replace('\0',' ')+" | Patient "+p.getName()+" begins treatment.");
         }
-        er.occupyStaff("Nurses",config.getTriageNurseRequirements().get(p.getTriageLevel().name()));
-        er.occupyStaff("Physicians",config.getTriagePhysicianRequirements().get(p.getTriageLevel().name()));
-        er.occupyStaff("Residents",config.getTriageRPRequirements().get(p.getTriageLevel().name()));
+        if(!useUnlimitedStaff) {
+            er.occupyStaff("Nurses", config.getTriageNurseRequirements().get(p.getTriageLevel().name()));
+            er.occupyStaff("Physicians", config.getTriagePhysicianRequirements().get(p.getTriageLevel().name()));
+            er.occupyStaff("Residents", config.getTriageRPRequirements().get(p.getTriageLevel().name()));
+        }
         er.occupyTreatmentRoom();
         treatingPatients.add(p);
         eventList.add(new Event(deltaTime.plus(p.getTreatmentTime()),"release", p));
@@ -389,9 +394,11 @@ public class DES {
         if(DETAILED_LOGGING){
             System.out.println("EVENT "+eventsProcessed+" | TIME "+deltaTime.toString().substring(2)+" | Patient "+p.getName()+" is discharged from the ER.");
         }
-        er.freeStaff("Nurses",config.getTriageNurseRequirements().get(p.getTriageLevel().name()));
-        er.freeStaff("Physicians",config.getTriagePhysicianRequirements().get(p.getTriageLevel().name()));
-        er.freeStaff("Residents",config.getTriageRPRequirements().get(p.getTriageLevel().name()));
+        if(!useUnlimitedStaff) {
+            er.freeStaff("Nurses", config.getTriageNurseRequirements().get(p.getTriageLevel().name()));
+            er.freeStaff("Physicians", config.getTriagePhysicianRequirements().get(p.getTriageLevel().name()));
+            er.freeStaff("Residents", config.getTriageRPRequirements().get(p.getTriageLevel().name()));
+        }
         er.freeTreatmentRoom();
         treatingPatients.remove(p);
         treatedPatients.add(p);

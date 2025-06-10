@@ -15,6 +15,7 @@
   "maxTotalHoursPerWeek": 48,
   "overtimeMultiplier": 1.5,
 
+  "useUnlimitedStaff": true,
   "staffCounts": {
     "REGISTERED_NURSE": 85,
     "LICENSED_PRACTICAL_NURSE": 15,
@@ -77,7 +78,7 @@
     "wk_2wk_4wk_2_5_10": "max((1000*cos((pi/336)*(t+336))-990),(1000*cos((pi/168)*(t+168))-995),(10*cos((pi/84)*(t+84))-9),((-0.25)*cos((pi/12)*t)+0.75))",
     "3rd_week_3x": "max(min((100*cos((pi/336)*(t-420))-70),3),((-0.25)*cos((pi/12)*t)+0.75))"
   },
-  "defaultArrivalFunction": "sin_full_range_24h",
+  "defaultArrivalFunction": "3rd_week_3x",
   "patientMinAge": 5,
   "patientMaxAge": 99,
   "visualize": true

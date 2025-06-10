@@ -1,3 +1,4 @@
+import java.io.FileNotFoundException;
 import java.io.IOException;
 
 import org.mariuszgromada.math.mxparser.License;
@@ -25,8 +26,17 @@ public class Main {
 
         // Run the simulation for 7 days
         //simulation.runSimulation(Duration.ofDays(7));
+        repeat(10,Duration.ofDays(100));
+    }
 
-            DES simulation = new DES();
-            simulation.start(Duration.ofDays(100));
+    public static void repeat(int iterations, Duration duration) throws IOException {
+        for (int i = 0; i < iterations; i++) {
+            run(duration);
+        }
+    }
+
+    public static void run(Duration duration) throws IOException {
+        DES simulation = new DES();
+        simulation.start(duration);
     }
 }
