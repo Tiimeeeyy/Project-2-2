@@ -360,6 +360,28 @@ public class DES {
                             )
                     );
                 }
+                if (Role.isPhysicianRole(Role.valueOf(role.getKey()))) {
+                    UUID id = UUID.randomUUID();
+                    staff.add(new Physician(
+                                    id,
+                                    role.getKey()+id.toString(),
+                                    Role.valueOf(role.getKey()),
+                                    config.getHourlyWages().get(role.getKey()),
+                                    config.getOvertimeMultiplier()
+                            )
+                    );
+                }
+                if (Role.isResidentRole(Role.valueOf(role.getKey()))) {
+                    UUID id = UUID.randomUUID();
+                    staff.add(new ResidentPhysician(
+                                    id,
+                                    role.getKey()+id.toString(),
+                                    Role.valueOf(role.getKey()),
+                                    config.getHourlyWages().get(role.getKey()),
+                                    config.getOvertimeMultiplier()
+                            )
+                    );
+                }
             }
         }
         return staff;
@@ -436,12 +458,23 @@ public class DES {
         this.focusTriageLevel = triageLevel;
     }
     
-    public void setScenarioType(String scenarioType) {
-        this.scenarioType = scenarioType;
-        // Apply scenario-specific modifications
-        if ("emergency".equals(scenarioType)) {
-            // Increase arrival rate during emergency
-            this.interarrivalTimeMins = this.interarrivalTimeMins * 0.5; // Double the arrival rate
+    public void setScenarioType(String arrivalFunctionName) {
+        this.scenarioType = arrivalFunctionName;
+        
+        // Update the arrival expression with the new function
+        try {
+            Map<String, String> arrivalFunctions = config.getPatientArrivalFunctions();
+            
+            if (arrivalFunctions.containsKey(arrivalFunctionName)) {
+                // Create a new expression with the selected arrival function
+                String exprString = arrivalFunctions.get(arrivalFunctionName);
+                this.arrivalExpression.setExpressionString(exprString);
+                System.out.println("Updated arrival function to '" + arrivalFunctionName + "': f(t) = " + exprString);
+            } else {
+                System.out.println("Warning: Arrival function '" + arrivalFunctionName + "' not found in config. Using default.");
+            }
+        } catch (Exception e) {
+            System.out.println("Error updating arrival function: " + e.getMessage());
         }
     }
     
@@ -507,6 +540,10 @@ public class DES {
         return diagnosisProbs.length;
     }
 
+    /**
+     * Adds the current contents of the data array to the output string to be written to CSV later
+     * @param hour the current hour of the simulation
+     */
     private void logToCSV(int hour){
         for (int[] datum:data
              ) {
@@ -514,6 +551,11 @@ public class DES {
         }
         stringOutputData=stringOutputData.substring(0,stringOutputData.length()-1)+"\n";
     }
+
+    /**
+     * Writes the contents of the output string to a file.
+     * @throws FileNotFoundException if the
+     */
     private void writeToCSV() throws FileNotFoundException {
         String filename = "log_"+LocalDateTime.now().format(DateTimeFormatter.ofPattern("ddMMHHmmss"))+".csv";
         File output = new File(filename);

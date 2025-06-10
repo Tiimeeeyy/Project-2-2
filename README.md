@@ -1,69 +1,114 @@
-# Emergency Room Simulation
+# Emergency Room Simulation and Workforce Optimization
 
-This project simulates an Emergency Room (ER) in a Dutch city with approximately 150,000 residents. It uses a Poisson process to model patient arrivals and exponential distributions to model treatment times.
+This project models and optimizes the operation of an Emergency Room (ER) under both routine and surge conditions. It combines a discrete-event simulation of patient flow with linear programming (LP)-based optimization of staff scheduling. The system is fully configurable and includes an interactive dashboard for real-time visualization.
 
 ## Overview
-
-The simulation models:
-- simulation.Patient arrivals following a Poisson distribution
-- simulation.Patient triage based on severity levels (RED, ORANGE, YELLOW, GREEN, BLUE)
-- Treatment time distributions based on triage levels
-- Waiting room capacity constraints
-- Treatment room availability
-- Time-of-day and weekend variations in patient arrivals
+The system models:
+- Patient arrivals using a time-varying Poisson process or a Discrete Event Simulator (DES)
+- Patient triage using modular triage classifiers (CTAS, ESI, MTS)
+- Treatment times based on triage level
+- Waiting room and treatment room capacity constraints
+- Dynamic staff allocation across shifts
+- Legal and contractual staff constraints (Oregon labor laws and ACGME rules)
+- Staff scheduling via binary integer linear programming
+- Interactive REST API and dashboard
 
 ## Key Components
 
-### simulation.Patient
-Represents individuals seeking emergency care with attributes like:
-- Unique identifier
-- Name and age
-- Triage level
-- Arrival, treatment start, and discharge timestamps
+### simulation package
+Implements core ER dynamics:
+- PoissonSimulator: hour-level simulation using a time-varying Poisson process
+- DES: minute-level discrete-event simulation for detailed tracking
+- EmergencyRoom: manages patient queues, room availability, staff resources
+- Patient: stores patient metadata and timing
+- TriageClassifier: interface with implementations for CTAS, ESI, MTS
 
-### simulation.EmergencyRoom
-Models the ER facility with:
-- Waiting room capacity
-- Priority queue for patient triage
-- Treatment room management
-- simulation.Patient flow controls
 
-### simulation.PoissonSimulator
-The main simulation engine that:
-- Generates patients according to statistical models
-- Processes arrivals, treatments, and discharges
-- Collects and reports statistics
-- Adjusts parameters based on time factors
+### staff package
+Models all ER personnel:
+- StaffMemberInterface and concrete classes (Nurse, Physician, ResidentPhysician, AdminClerk)
+- OregonStaffingRules: computes staffing demand based on patient volume and acuity
+- Demand objects drive LP scheduling based on simulated patient flow
+
+
+### scheduling package
+Optimizes workforce allocation:
+- NurseScheduler, PhysicianScheduler, ResidentPhysicianScheduler, AdminStaffScheduler
+- Builds and solves binary LP models with Google OR-Tools
+- Enforces:
+    - Maximum shift limits
+    - Rest periods
+    - Weekly hour limits
+    - Demand coverage for each shift
+- Extracts optimized schedules and integrates them with simulation and dashboard
+
+### `webserver` and Dashboard
+
+Provides an interactive frontend:
+
+- Embedded Spark server exposes REST API
+- Dashboard displays:
+  - Patient flow over time
+  - Triage level distribution
+  - Staff utilization
+  - Rejections and key performance indicators (KPIs)
+- Configuration driven via centralized `config.json` file
 
 ## Getting Started
 
 ### Prerequisites
-- Java 11 or higher
+
+- Java 17 or higher
 - Maven
 
 ### Running the Simulation
+
 ```bash
 mvn clean compile exec:java -Dexec.mainClass="Main"
-```
-or
-```bash
+
 mvn clean compile exec:java '-Dexec.mainClass=Main'
 ```
 
+## Running the Webserver
+``` bash
+mvn clean compile exec:java -Dexec.mainClass="WebServer"
+```
+Then open the dashboard at: http://localhost:8080
+
 ## Simulation Parameters
 
-Key parameters that can be adjusted:
-- Population size (currently 150,000)
-- ER capacity and treatment rooms
-- Simulation duration
-- Average patient arrival rate
-- Treatment time distributions by triage level
+Configurable via src/main/resources/config.json:
+- ER capacity (treatment rooms, waiting room size)
+- Patient arrival patterns and triage model
+- Treatment time distributions
+- Staffing limits and policies
+- Wages and staff counts
+- Legal constraints (rest periods, max weekly hours)
 
-## Output Statistics
+## Output and Visualization
 
-The simulation produces statistics including:
-- Total patients treated
-- Patients rejected due to capacity constraints
-- Average waiting times
-- Average treatment times
-- Resource utilization metrics
+The system produces:
+- Time-series data: arrivals, wait times, resource utilization
+- Summary statistics: treated, rejected, in-queue patients
+- Triage distribution
+- Staff utilization and shift assignments
+- Cost of optimized workforce plans
+
+Data is available through:
+- REST API endpoints (/api/simulation/run, /api/simulation/chartdata, etc.)
+- Interactive dashboard (visual charts + KPIs)
+
+## Project Goals
+The system is designed to support:
+- Operational optimization of ER staffing
+- Resilience testing under demand surges
+- Comparative evaluation of triage models
+- Visualization of patient and staff dynamics
+- Configurable scenario planning
+
+## License
+MIT License
+
+## Acknowledgements
+Developed as part of Project 2-2, Maastricht University, Data Science and Artificial Intelligence.
+Contributors: Emre Arac, Eldar Ulanov, Mason Decker, Olaf Deckers, Jesse Hoydonckx, Timur Schmidt, Vlad Stefan
