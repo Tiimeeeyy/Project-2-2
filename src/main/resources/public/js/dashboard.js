@@ -67,13 +67,9 @@ async function runSimulation() {
         const utilitiesResponse = await fetch('/api/simulation/utilities');
         const utilitiesData = await utilitiesResponse.json();
         
-        const staffStatsResponse = await fetch('/api/simulation/staff-statistics');
-        const staffStatsData = await staffStatsResponse.json();
-        
         updateCharts(chartData, triageData);
         updateStatistics(simData);
         updateUtilities(utilitiesData);
-        updateStaffStatistics(staffStatsData);
         
         statusElement.textContent = 'DES simulation complete';
         statusElement.style.backgroundColor = '#81c784';
@@ -373,131 +369,6 @@ function updateUtilities(utilities) {
             <div class="stat-item">
                 <div class="stat-label">System Type</div>
                 <div class="stat-value" style="font-size: 16px; color: #2196F3;">DES</div>
-            </div>
-        </div>
-    `;
-}
-
-function updateStaffStatistics(staffStats) {
-    const staffStatsArea = document.getElementById('staffStatsArea');
-    
-    if (staffStats.error) {
-        staffStatsArea.innerHTML = '<p>Error loading staff statistics</p>';
-        return;
-    }
-    
-    const physicians = staffStats.physicians || {};
-    const nurses = staffStats.nurses || {};
-    const residents = staffStats.residents || {};
-    const administration = staffStats.administration || {};
-    const overall = staffStats.overall || {};
-    
-    staffStatsArea.innerHTML = `
-        <div class="staff-stats-container">
-            <div class="staff-category">
-                <h3>Physicians</h3>
-                <div class="staff-metrics">
-                    <div class="metric">
-                        <span class="metric-label">Total Staff:</span>
-                        <span class="metric-value">${physicians.totalStaff || 0}</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">Active:</span>
-                        <span class="metric-value">${physicians.activeStaff || 0}</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">Utilization:</span>
-                        <span class="metric-value">${physicians.utilization || 0}%</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">Avg Patients/Shift:</span>
-                        <span class="metric-value">${physicians.avgPatientsPerShift || 0}</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="staff-category">
-                <h3>Nurses</h3>
-                <div class="staff-metrics">
-                    <div class="metric">
-                        <span class="metric-label">Total Staff:</span>
-                        <span class="metric-value">${nurses.totalStaff || 0}</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">Active:</span>
-                        <span class="metric-value">${nurses.activeStaff || 0}</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">Utilization:</span>
-                        <span class="metric-value">${nurses.utilization || 0}%</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">Avg Patients/Shift:</span>
-                        <span class="metric-value">${nurses.avgPatientsPerShift || 0}</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="staff-category">
-                <h3>Residents</h3>
-                <div class="staff-metrics">
-                    <div class="metric">
-                        <span class="metric-label">Total Staff:</span>
-                        <span class="metric-value">${residents.totalStaff || 0}</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">Active:</span>
-                        <span class="metric-value">${residents.activeStaff || 0}</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">Utilization:</span>
-                        <span class="metric-value">${residents.utilization || 0}%</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">Avg Patients/Shift:</span>
-                        <span class="metric-value">${residents.avgPatientsPerShift || 0}</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="staff-category">
-                <h3>Administration</h3>
-                <div class="staff-metrics">
-                    <div class="metric">
-                        <span class="metric-label">Total Staff:</span>
-                        <span class="metric-value">${administration.totalStaff || 0}</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">Active:</span>
-                        <span class="metric-value">${administration.activeStaff || 0}</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">Utilization:</span>
-                        <span class="metric-value">${administration.utilization || 0}%</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">Avg Patients Processed:</span>
-                        <span class="metric-value">${administration.avgPatientsProcessed || 0}</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="staff-category overall-stats">
-                <h3>Overall</h3>
-                <div class="staff-metrics">
-                    <div class="metric">
-                        <span class="metric-label">Total Staff:</span>
-                        <span class="metric-value">${overall.totalStaff || 0}</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">Average Utilization:</span>
-                        <span class="metric-value">${overall.averageUtilization || 0}%</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">Patient-to-Staff Ratio:</span>
-                        <span class="metric-value">${overall.patientToStaffRatio || 0}:1</span>
-                    </div>
-                </div>
             </div>
         </div>
     `;
