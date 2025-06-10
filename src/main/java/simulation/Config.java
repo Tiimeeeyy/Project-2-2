@@ -34,7 +34,6 @@ public final class Config {
     private String ERName;
 
     private int patientMinAge;
-
     @JsonProperty("ERCapacity")
     private int ERCapacity;
 

@@ -30,6 +30,7 @@ public class DES {
     private final Config config;
     private final EmergencyRoom er;
     private final Random random;
+    private final BaselineScheduler scheduler;
     private final Expression arrivalExpression;
     private final Argument t;
     private final Map<Patient.TriageLevel, Double> avgTreatmentTimes;
@@ -60,6 +61,7 @@ public class DES {
     public DES() throws IOException {
         this.stringOutputData = "Hour,Arrivals,Waiting,Treating,Available Rooms\n";
         this.useRandomSchedule = false;
+        this.scheduler = new BaselineScheduler();
         this.patientsRejected = 0;
         this.patientsTreated = 0;
         this.eventList = new LinkedList<>();
@@ -124,12 +126,30 @@ public class DES {
         while (totalTimeSimulated.compareTo(totalSimulationDuration) < 0) {
             System.out.println("\n--- Starting Simulation Cycle " + cycleNumber + " (Time: " + totalTimeSimulated.toDays() + " to " + (totalTimeSimulated.toDays() + schedulingPeriod.toDays()) + " days) ---");
 
-            // 1. SCHEDULE STAFF for the upcoming 28-day period
-            System.out.println("Generating optimal staff schedule for the next " + schedulingPeriod.toDays() + " days...");
-            // The getSchedule method is now called with the fixed schedulingPeriod
-            nurseSchedule = getSchedule(schedulingPeriod, "nurse");
-            physicianSchedule = getSchedule(schedulingPeriod, "physician");
-            residentSchedule = getSchedule(schedulingPeriod, "resident");
+            // Create the single input object needed for this cycle's scheduling.
+            OptimizationInput input = SchedulingInputFactory.createInput(this.config, schedulingPeriod);
+
+            // Check the config to decide which scheduler to use.
+            if (config.isUseRandomSchedule()) {
+                System.out.println("Generating schedule using BaselineScheduler...");
+                BaselineScheduler baselineScheduler = new BaselineScheduler();
+                OptimizedScheduleOutput baselineSchedule = baselineScheduler.generateBaselineSchedule(input);
+
+                // You can now access the generated schedule. For now, we'll just log the result.
+                if(baselineSchedule != null && baselineSchedule.isFeasible()){
+                    System.out.println("Baseline schedule generated successfully with total cost: " + baselineSchedule.getTotalCost());
+                } else {
+                    System.out.println("Baseline scheduler failed to generate a schedule.");
+                }
+
+            } else {
+                System.out.println("Generating optimal staff schedule using optimizers...");
+                // Call the optimizers as before, but using the new getSchedule method.
+                nurseSchedule = getSchedule("nurse", input);
+                physicianSchedule = getSchedule("physician", input);
+                residentSchedule = getSchedule("resident", input);
+            }
+
 
             // 2. GENERATE PATIENT ARRIVALS for the current cycle
             Duration cycleEndTime = totalTimeSimulated.plus(schedulingPeriod);
@@ -331,12 +351,17 @@ public class DES {
      * @param staffType the type of staff ("nurse", "physician", or "resident") to get a schedule for
      * @return an OptimizedScheduleOutput object containing the schedule requested
      */
-    private OptimizedScheduleOutput getSchedule(Duration duration,String staffType){
-        OptimizationInput input = SchedulingInputFactory.createInput(this.config, duration);
-        switch (staffType){
-            case "nurse" -> {return (new NurseScheduler()).optimizeNurseSchedule(input);}
-            case "physician" -> {return (new PhysicianScheduler()).optimizePhysicianSchedule(input);}
-            case "resident" -> {return (new ResidentPhysicianScheduler()).optimizeResidentSchedule(input);}
+    // In src/main/java/simulation/DES.java
+
+    private OptimizedScheduleOutput getSchedule(String staffType, OptimizationInput input) {
+        // The input is now created once outside and passed in.
+        switch (staffType) {
+            case "nurse":
+                return (new NurseScheduler()).optimizeNurseSchedule(input);
+            case "physician":
+                return (new PhysicianScheduler()).optimizePhysicianSchedule(input);
+            case "resident":
+                return (new ResidentPhysicianScheduler()).optimizeResidentSchedule(input);
         }
         return null;
     }

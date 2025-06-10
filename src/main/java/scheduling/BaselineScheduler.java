@@ -25,6 +25,7 @@ public class BaselineScheduler {
     private static final double MINIMUM_REST_HOURS_AFTER_LONG_SHIFT = 10.0;
 
     public OptimizedScheduleOutput generateBaselineSchedule(OptimizationInput input) {
+        System.out.println("Using baseline schedule:");
         List<StaffMemberInterface> staffPool = new ArrayList<>(input.getStaffMembers());
         Map<String, ShiftDefinition> lpShifts = input.getLpShifts();
         int numDays = input.getNumDaysInPeriod();
