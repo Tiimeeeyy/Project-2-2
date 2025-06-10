@@ -25,6 +25,7 @@ public class BaselineScheduler {
     private static final double MINIMUM_REST_HOURS_AFTER_LONG_SHIFT = 10.0;
 
     public OptimizedScheduleOutput generateBaselineSchedule(OptimizationInput input) {
+        System.out.println("Using baseline schedule:");
         List<StaffMemberInterface> staffPool = new ArrayList<>(input.getStaffMembers());
         Map<String, ShiftDefinition> lpShifts = input.getLpShifts();
         int numDays = input.getNumDaysInPeriod();
@@ -65,8 +66,7 @@ public class BaselineScheduler {
                         assignments.get(staff.getId()).put(d, shiftToAssign.getLpShiftId());
                         // Update weekly hours
                         int week = d / 7;
-                        double currentHours = weeklyHours.get(staff.getId()).get(week);
-                        weeklyHours.get(staff.getId()).put(week, currentHours + shiftToAssign.getLengthInHours());
+                        weeklyHours.get(staff.getId()).compute(week, (k, currentHours) -> currentHours + shiftToAssign.getLengthInHours());
                         assignedCount++;
                     }
                 }

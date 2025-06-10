@@ -30,6 +30,7 @@ public class DES {
     private final Config config;
     private final EmergencyRoom er;
     private final Random random;
+    private final BaselineScheduler scheduler;
     private final Expression arrivalExpression;
     private final Argument t;
     private final Map<Patient.TriageLevel, Double> avgTreatmentTimes;
@@ -68,12 +69,13 @@ public class DES {
         this.stringOutputData = "Hour,Arrivals,Waiting,Treating,Available Rooms,Total Treatment Time," +
                 "Average Treatment Time,Total Wait Time,Average Wait Time,Total Arrivals\n";
         this.useRandomSchedule = false;
+        this.scheduler = new BaselineScheduler();
         this.patientsRejected = 0;
         this.patientsTreated = 0;
         this.eventList = new LinkedList<>();
         this.deltaTime = Duration.ZERO;
-        this.interarrivalTimeMins = 15;
         this.config = Config.getInstance();
+        this.interarrivalTimeMins = config.getInterarrivalTimeMins();
         this.er = new EmergencyRoom(
                 config.getERName(),
                 config.getERCapacity(),
@@ -111,63 +113,137 @@ public class DES {
 
     /**
      * Starts the simulation, starting at midnight. All parameters except Duration are from the config.json file.
-     * @param duration the duration of the simulation.
+     * @param totalSimulationDuration the duration of the simulation.2
      */
-    public void start(Duration duration) throws FileNotFoundException {
-        //schedule staff
-        System.out.println("Scheduling staff...");
-        nurseSchedule = getSchedule(duration, "nurse");
-        physicianSchedule = getSchedule(duration, "physician");
-        residentSchedule = getSchedule(duration, "resident");
+// In src/main/java/simulation/DES.java
 
+    public void start(Duration totalSimulationDuration) throws FileNotFoundException {
+        // Define the cycle for scheduling and simulation
+        Duration schedulingPeriod = Duration.ofDays(28);
+        Duration totalTimeSimulated = Duration.ZERO;
+        int cycleNumber = 1;
+
+        // Initialize data collection for the total simulation duration
+        int totalHours = (int) totalSimulationDuration.toHours();
+        this.data = new int[10][totalHours];
         this.hourlyArrivals = 0;
-        // Initialize data collection arrays - wouldn't compile without this
-        int hours = (int) duration.toHours();
-        this.data = new int[10][hours];
 
+        System.out.println("Starting simulation for a total of " + totalSimulationDuration.toDays() + " days, in " + schedulingPeriod.toDays() + "-day cycles.");
 
-        //create arrivals for the entire duration
-        while(eventList.isEmpty() || eventList.getLast().getTime().compareTo(duration)<=0){
-            createArrival();
-        }
-        eventList.removeLast();
-        int numArrivals = eventList.size();
-        System.out.println("Simulation duration: "+ duration.toString().substring(2));
-        System.out.println(numArrivals+" arrivals generated");
-        
-        // Record data during simulation
-        int currentHour = 0;
-        while(!eventList.isEmpty()&&deltaTime.compareTo(duration)<0){
-            nextEvent(duration);
-            
-            // Record hourly data
-            int newHour = (int) deltaTime.toHours();
-            if (newHour != currentHour && newHour < hours) {
-                recordHourlyData(newHour);
-                currentHour = newHour;
+        // Main simulation loop
+        while (totalTimeSimulated.compareTo(totalSimulationDuration) < 0) {
+            System.out.println("\n--- Starting Simulation Cycle " + cycleNumber + " (Time: " + totalTimeSimulated.toDays() + " to " + (totalTimeSimulated.toDays() + schedulingPeriod.toDays()) + " days) ---");
+
+            // Create the single input object needed for this cycle's scheduling.
+            OptimizationInput input = SchedulingInputFactory.createInput(this.config, schedulingPeriod);
+
+            // Check the config to decide which scheduler to use.
+            if (config.isUseRandomSchedule()) {
+                System.out.println("Generating schedule using BaselineScheduler...");
+                BaselineScheduler baselineScheduler = new BaselineScheduler();
+                OptimizedScheduleOutput baselineSchedule = baselineScheduler.generateBaselineSchedule(input);
+
+                // You can now access the generated schedule. For now, we'll just log the result.
+                if(baselineSchedule != null && baselineSchedule.isFeasible()){
+                    System.out.println("Baseline schedule generated successfully with total cost: " + baselineSchedule.getTotalCost());
+                } else {
+                    System.out.println("Baseline scheduler failed to generate a schedule.");
+                }
+
+            } else {
+                System.out.println("Generating optimal staff schedule using optimizers...");
+                // Call the optimizers as before, but using the new getSchedule method.
+                nurseSchedule = getSchedule("nurse", input);
+                physicianSchedule = getSchedule("physician", input);
+                residentSchedule = getSchedule("resident", input);
             }
-        }
-        writeToCSV();
-        System.out.println("Summary ("+duration.toString().substring(2)+" duration):\n"+eventsProcessed+" events processed\n"+numArrivals+" patient arrivals\n"
-                +patientsTreated+" patients treated\n"+patientsRejected+" patients rejected");
-    }
 
+
+            // 2. GENERATE PATIENT ARRIVALS for the current cycle
+            Duration cycleEndTime = totalTimeSimulated.plus(schedulingPeriod);
+            System.out.println("Generating patient arrivals for the current cycle (until " + cycleEndTime + ")...");
+            generateArrivalsForCycle(totalTimeSimulated, cycleEndTime);
+            System.out.println(eventList.size() + " arrival events generated for this cycle.");
+
+            // 3. RUN SIMULATION for the current cycle
+            System.out.println("Processing events for cycle " + cycleNumber + "...");
+            int currentHour = (int) deltaTime.toHours();
+
+            // Process events only within the current cycle's time window
+            while (!eventList.isEmpty() && eventList.peek().getTime().compareTo(cycleEndTime) < 0) {
+                nextEvent(totalSimulationDuration); // The event itself sets the new deltaTime
+
+                // Record hourly data as before
+                int newHour = (int) deltaTime.toHours();
+                if (newHour > currentHour && newHour < totalHours) {
+                    recordHourlyData(newHour);
+                    for(int h = currentHour + 1; h < newHour; h++) {
+                        // Fill in any hours with no events
+                        recordHourlyData(h);
+                    }
+                    currentHour = newHour;
+                }
+            }
+
+            // Update total simulated time
+            totalTimeSimulated = totalTimeSimulated.plus(schedulingPeriod);
+            cycleNumber++;
+            System.out.println("--- End of Simulation Cycle " + (cycleNumber - 1) + " ---");
+        }
+
+        // Final actions after all cycles are complete
+        writeToCSV();
+        System.out.println("\nSummary (" + totalSimulationDuration.toString().substring(2) + " duration):\n" + eventsProcessed + " events processed\n"
+                + patientsTreated + " patients treated\n" + patientsRejected + " patients rejected");
+    }
+    // In src/main/java/simulation/DES.java
+
+    /**
+     * Clears the event list and generates new arrival events for a specific time period.
+     * @param cycleStartTime The start time for the event generation window.
+     * @param cycleEndTime The end time for the event generation window.
+     */
+    private void generateArrivalsForCycle(Duration cycleStartTime, Duration cycleEndTime) {
+        eventList.clear();
+        Duration currentTime = cycleStartTime;
+
+        while (currentTime.compareTo(cycleEndTime) < 0) {
+            // Calculate the arrival rate for the current hour
+            t.setArgumentValue(currentTime.toHours());
+            double currentInterarrivalTime = interarrivalTimeMins / arrivalExpression.calculate();
+
+            // Generate time to next arrival
+            ExponentialDistribution distribution = new ExponentialDistribution(currentInterarrivalTime);
+            Duration timeToNextArrival = Duration.ofMinutes((long) Math.max(1, distribution.sample())); // Ensure at least 1 minute passes
+
+            Duration newEventTime = currentTime.plus(timeToNextArrival);
+
+            // Add the event only if it falls within the current cycle
+            if (newEventTime.compareTo(cycleEndTime) < 0) {
+                Patient p = generateRandomPatient(newEventTime); // Pass arrival time to patient
+                eventList.add(new Event(newEventTime, "arrival", p));
+            }
+            currentTime = newEventTime;
+        }
+        // Sort events by time to ensure correct processing order
+        eventList.sort(null);
+    }
     /**
      * Generates an arrival event prior to the start of the simulation. Interarrival times follow a Poisson process,
      * drawing arrivals from an exponential distribution with the interarrivalTime variable as parameter.
      */
-    private void createArrival(){
-        Duration lastEventTime;
-        if (eventList.isEmpty()){
-            lastEventTime = Duration.ZERO;
-        } else {
-            lastEventTime = eventList.getLast().getTime();
-        }
-        t.setArgumentValue(+(int)Math.floor(lastEventTime.toHours()));
-        ExponentialDistribution distribution = new ExponentialDistribution(interarrivalTimeMins/arrivalExpression.calculate());
-        Patient p = generateRandomPatient();
-        eventList.add(new Event(Duration.ofMinutes((long)distribution.sample()).plus(lastEventTime), "arrival", p));
-    }
+//    private void createArrival(){
+//        Duration lastEventTime;
+//        if (eventList.isEmpty()){
+//            lastEventTime = Duration.ZERO;
+//        } else {
+//            lastEventTime = eventList.getLast().getTime();
+//        }
+//        t.setArgumentValue(+(int)Math.floor(lastEventTime.toHours()));
+//        ExponentialDistribution distribution = new ExponentialDistribution(interarrivalTimeMins/arrivalExpression.calculate());
+//        Patient p = generateRandomPatient();
+//        eventList.add(new Event(Duration.ofMinutes((long)distribution.sample()).plus(lastEventTime), "arrival", p));
+//    }
 
     /**
      * Ticks over to the next event in the simulation and calls the relevant function to process it.
@@ -286,29 +362,20 @@ public class DES {
     /**
      * Retrieves the optimized schedule for a supercategory of staff roles (nurse, attending, or resident) using the LP
      * system with the parameters given in config.json.
-     * @param duration the duration of the simulation
      * @param staffType the type of staff ("nurse", "physician", or "resident") to get a schedule for
      * @return an OptimizedScheduleOutput object containing the schedule requested
      */
-    private OptimizedScheduleOutput getSchedule(Duration duration,String staffType){
-        OptimizationInput input = OptimizationInput.builder()
-                .staffMembers(genStaff())
-                .demands(genDemands(duration))
-                .lpShifts(new HashMap<>() {{
-                    put("d8", new ShiftDefinition("d8", Shift.DAY_8H));
-                    put("e8", new ShiftDefinition("e8", Shift.EVENING_8H));
-                    put("n8", new ShiftDefinition("n8", Shift.NIGHT_8H));
-                }})
-                .maxHoursPerDay(config.getMaxHoursPerDay())
-                .maxRegularHoursPerWeek(config.getMaxRegularHoursPerWeek())
-                .maxTotalHoursPerWeek(config.getMaxTotalHoursPerWeek())
-                .numDaysInPeriod((int)Math.ceil((double)duration.toHours()/24))
-                .numWeeksInPeriod((int)Math.ceil((double)duration.toHours()/168))
-                .build();
-        switch (staffType){
-            case "nurse" -> {return (new NurseScheduler()).optimizeNurseSchedule(input);}
-            case "physician" -> {return (new PhysicianScheduler()).optimizePhysicianSchedule(input);}
-            case "resident" -> {return (new ResidentPhysicianScheduler()).optimizeResidentSchedule(input);}
+    // In src/main/java/simulation/DES.java
+
+    private OptimizedScheduleOutput getSchedule(String staffType, OptimizationInput input) {
+        // The input is now created once outside and passed in.
+        switch (staffType) {
+            case "nurse":
+                return (new NurseScheduler()).optimizeNurseSchedule(input);
+            case "physician":
+                return (new PhysicianScheduler()).optimizePhysicianSchedule(input);
+            case "resident":
+                return (new ResidentPhysicianScheduler()).optimizeResidentSchedule(input);
         }
         return null;
     }
@@ -435,12 +502,23 @@ public class DES {
         this.focusTriageLevel = triageLevel;
     }
     
-    public void setScenarioType(String scenarioType) {
-        this.scenarioType = scenarioType;
-        // Apply scenario-specific modifications
-        if ("emergency".equals(scenarioType)) {
-            // Increase arrival rate during emergency
-            this.interarrivalTimeMins = this.interarrivalTimeMins * 0.5; // Double the arrival rate
+    public void setScenarioType(String arrivalFunctionName) {
+        this.scenarioType = arrivalFunctionName;
+
+        // Update the arrival expression with the new function
+        try {
+            Map<String, String> arrivalFunctions = config.getPatientArrivalFunctions();
+
+            if (arrivalFunctions.containsKey(arrivalFunctionName)) {
+                // Create a new expression with the selected arrival function
+                String exprString = arrivalFunctions.get(arrivalFunctionName);
+                this.arrivalExpression.setExpressionString(exprString);
+                System.out.println("Updated arrival function to '" + arrivalFunctionName + "': f(t) = " + exprString);
+            } else {
+                System.out.println("Warning: Arrival function '" + arrivalFunctionName + "' not found in config. Using default.");
+            }
+        } catch (Exception e) {
+            System.out.println("Error updating arrival function: " + e.getMessage());
         }
     }
     
@@ -457,7 +535,7 @@ public class DES {
      * Generates a random patient according to a set of probabilities regarding diagnoses with varying triage levels.
      * @return a random Patient object
      */
-    private Patient generateRandomPatient() {
+    private Patient generateRandomPatient(Duration arrivalTime) {
         UUID id = UUID.randomUUID();
         String name = "Patient" + Math.abs(id.hashCode() % 10000);
         int age = 5 + random.nextInt(95);
@@ -479,7 +557,7 @@ public class DES {
         //Treatment times follow a normal distribution, shape varies based on triage level.
         NormalDistribution treatmentTimeDist = new NormalDistribution(avgTreatmentTimes.get(triageLevel),0.25*avgTreatmentTimes.get(triageLevel));
         Duration treatmentTime = Duration.ofMinutes((long)treatmentTimeDist.sample());
-        return new Patient(id, name, age, triageLevel, deltaTime, treatmentTime);
+        return new Patient(id, name, age, triageLevel, arrivalTime, treatmentTime);
     }
 
     /**

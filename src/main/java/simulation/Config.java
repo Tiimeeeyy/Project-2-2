@@ -34,7 +34,6 @@ public final class Config {
     private String ERName;
 
     private int patientMinAge;
-
     @JsonProperty("ERCapacity")
     private int ERCapacity;
 
@@ -64,6 +63,7 @@ public final class Config {
     private int estNonTraumaPatientsDay;
     private int estNonTraumaPatientsEvening;
     private int estNonTraumaPatientsNight;
+    private int interarrivalTimeMins;
     private boolean visualize;
     private boolean useRandomSchedule;
 

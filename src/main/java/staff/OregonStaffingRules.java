@@ -89,7 +89,7 @@ public class OregonStaffingRules {
             return Math.max(1, (int) Math.ceil(edPatientCount / 20.0));
         } else if (physicianRole == Role.RESIDENT_PHYSICIAN) {
             // Residents often supplement attending physicians, ratio might be 1 resident per 10-15 patients.
-            return (int) Math.ceil(edPatientCount / 15.0);
+            return (int) Math.ceil(edPatientCount / 20.0);
         }
         return 0; // Default for other physician roles not specified in this example
     }

@@ -1,5 +1,6 @@
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import simulation.Config;
 import simulation.DES;
 import simulation.Patient;
 import spark.Spark;
@@ -11,12 +12,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.mariuszgromada.math.mxparser.License;
+
 public class WebServer {
     private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     
     private static DES lastSimulation = null;
     
     public static void main(String[] args) throws IOException {
+        License.iConfirmNonCommercialUse("ken12");
         Spark.port(8080);
         Spark.staticFileLocation("/public");
         configureCORS();
@@ -59,10 +63,10 @@ public class WebServer {
         Spark.post("/api/simulation/run", (request, response) -> {
             Map<String, Object> body = gson.fromJson(request.body(), new com.google.gson.reflect.TypeToken<Map<String, Object>>(){}.getType());
             
-            int days = 7;
+            int days = 1;
             Map<String, Object> hyperparameters = new HashMap<>();
             String triageLevel = null;
-            String scenario = "regular";
+            String arrivalFunction = "sinusoidal_24h"; // Default from config
             String triageClassifier = "CTAS";
             
             if (body != null) {
@@ -80,8 +84,12 @@ public class WebServer {
                 if (body.containsKey("triageLevel")) {
                     triageLevel = (String) body.get("triageLevel");
                 }
+                if (body.containsKey("arrivalFunction")) {
+                    arrivalFunction = (String) body.get("arrivalFunction");
+                }
+                // Keep backward compatibility with old "scenario" parameter
                 if (body.containsKey("scenario")) {
-                    scenario = (String) body.get("scenario");
+                    arrivalFunction = (String) body.get("scenario");
                 }
                 if (body.containsKey("triageClassifier")) {
                     triageClassifier = (String) body.get("triageClassifier");
@@ -104,7 +112,7 @@ public class WebServer {
                 }
             }
             
-            simulation.setScenarioType(scenario);
+            simulation.setScenarioType(arrivalFunction);
             simulation.setTriageClassifier(triageClassifier);
             simulation.start(Duration.ofDays(days));
             
@@ -250,17 +258,31 @@ public class WebServer {
         Spark.get("/api/config/scenarios", (request, response) -> {
             List<Map<String, String>> scenarios = new ArrayList<>();
             
-            Map<String, String> regular = new HashMap<>();
-            regular.put("value", "regular");
-            regular.put("label", "Regular Operation");
-            regular.put("description", "Normal ER operations with standard patient flow");
-            scenarios.add(regular);
-            
-            Map<String, String> emergency = new HashMap<>();
-            emergency.put("value", "emergency");
-            emergency.put("label", "Emergency Scenario");
-            emergency.put("description", "High-stress scenario with increased patient arrivals");
-            scenarios.add(emergency);
+            try {
+                Config config = Config.getInstance();
+                Map<String, String> arrivalFunctions = config.getPatientArrivalFunctions();
+                
+                for (Map.Entry<String, String> entry : arrivalFunctions.entrySet()) {
+                    Map<String, String> scenario = new HashMap<>();
+                    scenario.put("value", entry.getKey());
+                    scenario.put("label", formatScenarioLabel(entry.getKey()));
+                    scenario.put("description", entry.getValue());
+                    scenarios.add(scenario);
+                }
+            } catch (IOException e) {
+                // Fallback to default scenarios if config can't be loaded
+                Map<String, String> regular = new HashMap<>();
+                regular.put("value", "sinusoidal_24h");
+                regular.put("label", "Regular Operation");
+                regular.put("description", "(-0.25)*cos((pi/12)*t)+0.75");
+                scenarios.add(regular);
+                
+                Map<String, String> emergency = new HashMap<>();
+                emergency.put("value", "constant_2x");
+                emergency.put("label", "Emergency Scenario");
+                emergency.put("description", "2");
+                scenarios.add(emergency);
+            }
             
             return gson.toJson(scenarios);
         });
@@ -378,5 +400,26 @@ public class WebServer {
             
             return gson.toJson(staffStats);
         });
+    }
+    
+    private static String formatScenarioLabel(String key) {
+        // Convert snake_case to Title Case
+        String[] parts = key.split("_");
+        StringBuilder formatted = new StringBuilder();
+        
+        for (int i = 0; i < parts.length; i++) {
+            if (i > 0) {
+                formatted.append(" ");
+            }
+            String part = parts[i];
+            if (part.length() > 0) {
+                formatted.append(Character.toUpperCase(part.charAt(0)));
+                if (part.length() > 1) {
+                    formatted.append(part.substring(1).toLowerCase());
+                }
+            }
+        }
+        
+        return formatted.toString();
     }
 }
