@@ -26,7 +26,9 @@ public class Main {
         // Run the simulation for 7 days
         //simulation.runSimulation(Duration.ofDays(7));
 
-        DES simulation = new DES();
-        simulation.start(Duration.ofDays(100));
+        for (int i = 0; i < 10; i++) {
+            DES simulation = new DES();
+            simulation.start(Duration.ofDays(100));
+        }
     }
 }
