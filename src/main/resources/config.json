@@ -7,7 +7,7 @@
 
   "CNARatio": 8.0,
   "LPNRatio": 15.0,
-  "useRandomSchedule": false,
+  "useRandomSchedule": true,
   "useHistoricalAdjustment": true,
 
   "maxHoursPerDay": 12,
