@@ -41,6 +41,20 @@ public class ResidentPhysician implements StaffMemberInterface {
         this.residencyYear = residencyYear;
         this.schedule = new HashMap<>(7 * 4);
     }
+    public ResidentPhysician(UUID id, String name, Role residentRole, double regularHourlyWage,
+                             double overtimeMultiplier) {
+        if (residentRole == null || !Role.isResidentRole(residentRole)) {
+            throw new IllegalArgumentException("The provided role '" + residentRole +
+                    "' is not a valid resident role for a ResidentPhysician object.");
+        }
+        this.id = id;
+        this.name = name;
+        this.role = residentRole;
+        this.regularHourlyWage = regularHourlyWage;
+        this.overtimeMultiplier = overtimeMultiplier;
+        this.schedule = new HashMap<>(7 * 4);
+    }
+
 
     public ResidentPhysician(String name, Role residentRole, double regularHourlyWage,
                              double overtimeMultiplier, int residencyYear) {
