@@ -54,11 +54,19 @@ public class DES {
     private OptimizedScheduleOutput physicianSchedule;
     private OptimizedScheduleOutput residentSchedule;
     private String stringOutputData;
-    private boolean useRandomSchedule;
+    private final boolean useRandomSchedule;
+    private int totalArrivals;
     private int hourlyArrivals;
+    private int totalERAdmissions;
+    private double totalTreatmentTime;
+    private double avgTreatmentTime;
+    private double totalWaitTime;
+    private double avgWaitTime;
 
     public DES() throws IOException {
-        this.stringOutputData = "Hour,Arrivals,Waiting,Treating,Available Rooms\n";
+        this.totalTreatmentTime=0;
+        this.stringOutputData = "Hour,Arrivals,Waiting,Treating,Available Rooms,Total Treatment Time," +
+                "Average Treatment Time,Total Wait Time,Average Wait Time,Total Arrivals\n";
         this.useRandomSchedule = false;
         this.patientsRejected = 0;
         this.patientsTreated = 0;
@@ -115,7 +123,7 @@ public class DES {
         this.hourlyArrivals = 0;
         // Initialize data collection arrays - wouldn't compile without this
         int hours = (int) duration.toHours();
-        this.data = new int[5][hours];
+        this.data = new int[10][hours];
 
 
         //create arrivals for the entire duration
@@ -187,11 +195,14 @@ public class DES {
      * @param p the patient that arrives
      */
     private void arrival(Patient p){
+        totalArrivals++;
+        p.setArrivalTime(deltaTime);
         hourlyArrivals++;
         if (DETAILED_LOGGING) {
             System.out.println("EVENT " + eventsProcessed + " | TIME " + deltaTime.toString().substring(2) + " | Patient " + p.getName() + " arrives needing " + p.getTriageLevel().getDescription().toLowerCase() + " care.");
         }
         if(er.addPatient(p)) {
+            totalERAdmissions++;
             if (canTreatPatient(p)) {
                 treat(er.getNextPatient());
             } else {
@@ -234,6 +245,8 @@ public class DES {
      * @param p the patient to treat
      */
     private void treat(Patient p){
+        totalWaitTime+=deltaTime.minus(p.getArrivalTime()).toSeconds();
+        avgWaitTime=totalWaitTime/totalERAdmissions;
         if(DETAILED_LOGGING){
             System.out.println(new String(new char[("EVENT "+eventsProcessed+" | TIME "+deltaTime.toString().substring(2)).length()]).replace('\0',' ')+" | Patient "+p.getName()+" begins treatment.");
         }
@@ -252,6 +265,8 @@ public class DES {
      */
     private void release(Patient p){
         patientsTreated++;
+        totalTreatmentTime+=p.getTreatmentTime().toSeconds();
+        avgTreatmentTime=totalTreatmentTime/patientsTreated;
         if(DETAILED_LOGGING){
             System.out.println("EVENT "+eventsProcessed+" | TIME "+deltaTime.toString().substring(2)+" | Patient "+p.getName()+" is discharged from the ER.");
         }
@@ -397,6 +412,11 @@ public class DES {
             data[2][hour] = er.getWaitingPatients().size();
             data[3][hour] = treatingPatients.size();
             data[4][hour] = er.getTreatmentRooms() - er.getOccupiedTreatmentRooms();
+            data[5][hour] = (int)totalTreatmentTime;
+            data[6][hour] = (int)avgTreatmentTime;
+            data[7][hour] = (int)totalWaitTime;
+            data[8][hour] = (int)avgWaitTime;
+            data[9][hour] = totalArrivals;
         }
         logToCSV(hour);
         hourlyArrivals = 0;

@@ -80,8 +80,6 @@
     "constant": "1",
     "constant_2x": "2",
     "constant_0.5x": "0.5",
-    "linear": "t",
-    "linear_wk_2x": "t/42",
     "sinusoidal_24h": "(-0.25)*cos((pi/12)*t)+0.75",
     "sinusoidal_24h_2x": "2*((-0.25)*cos((pi/12)*t)+0.75)",
     "sinusoidal_24h_0.5x": "0.5*((-0.25)*cos((pi/12)*t)+0.75)",
