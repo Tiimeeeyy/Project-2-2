@@ -65,8 +65,7 @@ public class BaselineScheduler {
                         assignments.get(staff.getId()).put(d, shiftToAssign.getLpShiftId());
                         // Update weekly hours
                         int week = d / 7;
-                        double currentHours = weeklyHours.get(staff.getId()).get(week);
-                        weeklyHours.get(staff.getId()).put(week, currentHours + shiftToAssign.getLengthInHours());
+                        weeklyHours.get(staff.getId()).compute(week, (k, currentHours) -> currentHours + shiftToAssign.getLengthInHours());
                         assignedCount++;
                     }
                 }
