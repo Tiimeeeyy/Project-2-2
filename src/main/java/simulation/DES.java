@@ -108,7 +108,7 @@ public class DES {
         this.hyperparameters = new HashMap<>();
         this.focusTriageLevel = null;
         this.scenarioType = "regular"; // Default scenario
-        this.triageClassifier = new CTAS(); // Default triage classifier mts ctas esi
+        this.triageClassifier = new ESI(); // Default triage classifier mts ctas esi
     }
 
     /**
